@@ -1,11 +1,13 @@
---// Y Dashboard - Activity & Movement Monitor
---// Maximum: 100 entries per log
---// Logging is OFF by default
+--// YDashboard - Activity + Movement Monitor
+--// Activity monitoring uses normal client-visible Roblox interaction events.
+--// No remote spying / hooking / source extraction.
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
 
 local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 --==================================================
 -- SETTINGS
@@ -19,17 +21,25 @@ local MovementEnabled = false
 local ActivityLogs = {}
 local MovementLogs = {}
 
-local SelectedActivityLog = ""
-local SelectedMovementLog = ""
+local ActivityConnections = {}
+local MovementConnections = {}
+
+local MonitoredTools = {}
+local MonitoredButtons = {}
+local MonitoredPrompts = {}
+local MonitoredClicks = {}
+
+local LastMovementEvent = nil
 
 --==================================================
--- SCREEN GUI
+-- GUI
 --==================================================
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "YDashboard"
 ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.Parent = PlayerGui
 
 --==================================================
 -- Y BUTTON
@@ -37,36 +47,19 @@ ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
 local YButton = Instance.new("TextButton")
 YButton.Name = "YButton"
-YButton.Size = UDim2.new(0, 55, 0, 55)
-YButton.Position = UDim2.new(0, 20, 0.5, -27)
-YButton.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
+YButton.Size = UDim2.new(0, 45, 0, 45)
+YButton.Position = UDim2.new(0, 20, 0.5, -22)
+YButton.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+YButton.BorderSizePixel = 0
 YButton.Text = "Y"
 YButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-YButton.TextSize = 24
+YButton.TextSize = 22
 YButton.Font = Enum.Font.GothamBold
 YButton.Parent = ScreenGui
 
 local YCorner = Instance.new("UICorner")
-YCorner.CornerRadius = UDim.new(0, 12)
+YCorner.CornerRadius = UDim.new(1, 0)
 YCorner.Parent = YButton
-
---==================================================
--- LOCK BUTTON
---==================================================
-
-local LockButton = Instance.new("TextButton")
-LockButton.Name = "LockButton"
-LockButton.Size = UDim2.new(0, 32, 0, 32)
-LockButton.Position = UDim2.new(0, 80, 0.5, -16)
-LockButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-LockButton.Text = "🔓"
-LockButton.TextSize = 16
-LockButton.Font = Enum.Font.Gotham
-LockButton.Parent = ScreenGui
-
-local LockCorner = Instance.new("UICorner")
-LockCorner.CornerRadius = UDim.new(0, 8)
-LockCorner.Parent = LockButton
 
 --==================================================
 -- DASHBOARD
@@ -76,12 +69,13 @@ local Dashboard = Instance.new("Frame")
 Dashboard.Name = "Dashboard"
 Dashboard.Size = UDim2.new(0, 700, 0, 450)
 Dashboard.Position = UDim2.new(0.5, -350, 0.5, -225)
-Dashboard.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-Dashboard.Visible = false
+Dashboard.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Dashboard.BorderSizePixel = 0
+Dashboard.Visible = true
 Dashboard.Parent = ScreenGui
 
 local DashboardCorner = Instance.new("UICorner")
-DashboardCorner.CornerRadius = UDim.new(0, 12)
+DashboardCorner.CornerRadius = UDim.new(0, 10)
 DashboardCorner.Parent = Dashboard
 
 --==================================================
@@ -89,108 +83,385 @@ DashboardCorner.Parent = Dashboard
 --==================================================
 
 local Title = Instance.new("TextLabel")
-Title.Name = "Title"
-Title.Size = UDim2.new(1, 0, 0, 45)
+Title.Size = UDim2.new(1, -100, 0, 45)
+Title.Position = UDim2.new(0, 15, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "Y Dashboard"
+Title.Text = "YDashboard"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 21
+Title.TextSize = 20
 Title.Font = Enum.Font.GothamBold
+Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = Dashboard
 
 --==================================================
--- TABS
+-- CLOSE / TOGGLE
 --==================================================
 
-local ActivityTab = Instance.new("TextButton")
-ActivityTab.Size = UDim2.new(0, 150, 0, 32)
-ActivityTab.Position = UDim2.new(0, 20, 0, 48)
-ActivityTab.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-ActivityTab.Text = "ACTIVITY"
-ActivityTab.TextColor3 = Color3.fromRGB(255, 255, 255)
-ActivityTab.TextSize = 12
-ActivityTab.Font = Enum.Font.GothamBold
-ActivityTab.Parent = Dashboard
+local CloseButton = Instance.new("TextButton")
+CloseButton.Size = UDim2.new(0, 35, 0, 35)
+CloseButton.Position = UDim2.new(1, -45, 0, 5)
+CloseButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+CloseButton.BorderSizePixel = 0
+CloseButton.Text = "X"
+CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseButton.TextSize = 16
+CloseButton.Font = Enum.Font.GothamBold
+CloseButton.Parent = Dashboard
 
-local ActivityCorner = Instance.new("UICorner")
-ActivityCorner.CornerRadius = UDim.new(0, 6)
-ActivityCorner.Parent = ActivityTab
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 7)
+CloseCorner.Parent = CloseButton
 
-local MovementTab = Instance.new("TextButton")
-MovementTab.Size = UDim2.new(0, 150, 0, 32)
-MovementTab.Position = UDim2.new(0, 180, 0, 48)
-MovementTab.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-MovementTab.Text = "MOVEMENT"
-MovementTab.TextColor3 = Color3.fromRGB(200, 200, 200)
-MovementTab.TextSize = 12
-MovementTab.Font = Enum.Font.GothamBold
-MovementTab.Parent = Dashboard
+CloseButton.MouseButton1Click:Connect(function()
+    Dashboard.Visible = false
+end)
 
-local MovementCorner = Instance.new("UICorner")
-MovementCorner.CornerRadius = UDim.new(0, 6)
-MovementCorner.Parent = MovementTab
+YButton.MouseButton1Click:Connect(function()
+    Dashboard.Visible = not Dashboard.Visible
+end)
 
 --==================================================
--- ACTIVITY PAGE
+-- TAB BAR
 --==================================================
 
-local ActivityPage = Instance.new("Frame")
-ActivityPage.Size = UDim2.new(1, -40, 1, -95)
-ActivityPage.Position = UDim2.new(0, 20, 0, 90)
-ActivityPage.BackgroundTransparency = 1
-ActivityPage.Parent = Dashboard
+local TabBar = Instance.new("Frame")
+TabBar.Size = UDim2.new(1, -20, 0, 40)
+TabBar.Position = UDim2.new(0, 10, 0, 50)
+TabBar.BackgroundTransparency = 1
+TabBar.Parent = Dashboard
+
+local function CreateTab(name, position)
+    local Button = Instance.new("TextButton")
+    Button.Size = UDim2.new(0, 120, 1, 0)
+    Button.Position = UDim2.new(0, position, 0, 0)
+    Button.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    Button.BorderSizePixel = 0
+    Button.Text = name
+    Button.TextColor3 = Color3.fromRGB(220, 220, 220)
+    Button.TextSize = 14
+    Button.Font = Enum.Font.GothamBold
+    Button.Parent = TabBar
+
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 7)
+    Corner.Parent = Button
+
+    return Button
+end
+
+local ActivityTab = CreateTab("ACTIVITY", 0)
+local MovementTab = CreateTab("MOVEMENT", 130)
 
 --==================================================
--- ACTIVITY ON/OFF
+-- PAGE CREATOR
 --==================================================
 
-local ActivityToggle = Instance.new("TextButton")
-ActivityToggle.Size = UDim2.new(0, 120, 0, 30)
-ActivityToggle.Position = UDim2.new(0, 0, 0, 0)
-ActivityToggle.BackgroundColor3 = Color3.fromRGB(75, 45, 45)
-ActivityToggle.Text = "ACTIVITY: OFF"
-ActivityToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-ActivityToggle.TextSize = 11
-ActivityToggle.Font = Enum.Font.GothamBold
-ActivityToggle.Parent = ActivityPage
+local function CreatePage()
+    local Page = Instance.new("Frame")
+    Page.Size = UDim2.new(1, -20, 1, -105)
+    Page.Position = UDim2.new(0, 10, 0, 95)
+    Page.BackgroundTransparency = 1
+    Page.Visible = false
+    Page.Parent = Dashboard
 
-local ActivityToggleCorner = Instance.new("UICorner")
-ActivityToggleCorner.CornerRadius = UDim.new(0, 6)
-ActivityToggleCorner.Parent = ActivityToggle
+    return Page
+end
+
+local ActivityPage = CreatePage()
+local MovementPage = CreatePage()
+
+ActivityPage.Visible = true
+
+--==================================================
+-- TOGGLE CREATOR
+--==================================================
+
+local function CreateToggle(parent, text, position, callback)
+
+    local Button = Instance.new("TextButton")
+    Button.Size = UDim2.new(0, 110, 0, 35)
+    Button.Position = position
+    Button.BackgroundColor3 = Color3.fromRGB(120, 40, 40)
+    Button.BorderSizePixel = 0
+    Button.Text = text .. ": OFF"
+    Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Button.TextSize = 13
+    Button.Font = Enum.Font.GothamBold
+    Button.Parent = parent
+
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 7)
+    Corner.Parent = Button
+
+    local Enabled = false
+
+    Button.MouseButton1Click:Connect(function()
+
+        Enabled = not Enabled
+
+        if Enabled then
+            Button.Text = text .. ": ON"
+            Button.BackgroundColor3 = Color3.fromRGB(40, 120, 60)
+        else
+            Button.Text = text .. ": OFF"
+            Button.BackgroundColor3 = Color3.fromRGB(120, 40, 40)
+        end
+
+        callback(Enabled)
+    end)
+
+    return Button
+end
+
+--==================================================
+-- LOG HELPERS
+--==================================================
+
+local ActivityInfo
+local MovementInfo
+local ActivityList
+local MovementList
+
+local function GetObjectPath(Object)
+
+    if not Object then
+        return "nil"
+    end
+
+    local Success, Result = pcall(function()
+        return Object:GetFullName()
+    end)
+
+    if Success then
+        return Result
+    end
+
+    return Object.Name
+end
+
+local function GetObjectInfo(Object)
+
+    if not Object then
+        return "Object: nil"
+    end
+
+    local Lines = {}
+
+    table.insert(Lines, "Name: " .. Object.Name)
+    table.insert(Lines, "Class: " .. Object.ClassName)
+    table.insert(Lines, "Path: " .. GetObjectPath(Object))
+
+    return table.concat(Lines, "\n")
+end
+
+local function AddToList(ListObject, Text)
+
+    local Label = Instance.new("TextLabel")
+    Label.Size = UDim2.new(1, -5, 0, 28)
+    Label.BackgroundTransparency = 1
+    Label.Text = Text
+    Label.TextColor3 = Color3.fromRGB(220, 220, 220)
+    Label.TextSize = 12
+    Label.Font = Enum.Font.Code
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.Parent = ListObject
+
+    return Label
+end
+
+local function RefreshActivity()
+
+    for _, Child in ipairs(ActivityList:GetChildren()) do
+        if Child:IsA("TextLabel") then
+            Child:Destroy()
+        end
+    end
+
+    for _, Entry in ipairs(ActivityLogs) do
+        AddToList(ActivityList, Entry)
+    end
+
+    ActivityList.CanvasSize =
+        UDim2.new(0, 0, 0, #ActivityLogs * 30)
+
+    ActivityInfo.Text = table.concat(ActivityLogs, "\n\n")
+end
+
+local function RefreshMovement()
+
+    for _, Child in ipairs(MovementList:GetChildren()) do
+        if Child:IsA("TextLabel") then
+            Child:Destroy()
+        end
+    end
+
+    for _, Entry in ipairs(MovementLogs) do
+        AddToList(MovementList, Entry)
+    end
+
+    MovementList.CanvasSize =
+        UDim2.new(0, 0, 0, #MovementLogs * 30)
+
+    MovementInfo.Text = table.concat(MovementLogs, "\n\n")
+end
+
+--==================================================
+-- ACTIVITY LOGGER
+--==================================================
+
+local function LogActivity(EventType, Object, Details)
+
+    if not ActivityEnabled then
+        return
+    end
+
+    local Time = os.date("%H:%M:%S")
+
+    local ObjectName = "nil"
+    local ObjectClass = "nil"
+    local ObjectPath = "nil"
+
+    if Object then
+        ObjectName = Object.Name
+        ObjectClass = Object.ClassName
+        ObjectPath = GetObjectPath(Object)
+    end
+
+    local Entry =
+        "[" .. Time .. "] " ..
+        EventType ..
+        "\n" ..
+        "Name: " .. ObjectName ..
+        "\n" ..
+        "Class: " .. ObjectClass ..
+        "\n" ..
+        "Path: " .. ObjectPath
+
+    if Details and Details ~= "" then
+        Entry = Entry .. "\nDetails: " .. Details
+    end
+
+    table.insert(ActivityLogs, 1, Entry)
+
+    if #ActivityLogs > MAX_LOGS then
+        table.remove(ActivityLogs)
+    end
+
+    RefreshActivity()
+end
+
+--==================================================
+-- MOVEMENT LOGGER
+--==================================================
+
+local function LogMovement(State)
+
+    if not MovementEnabled then
+        return
+    end
+
+    if State == LastMovementEvent then
+        return
+    end
+
+    LastMovementEvent = State
+
+    local Time = os.date("%H:%M:%S")
+
+    local Entry =
+        "[" .. Time .. "] MOVEMENT: " .. State
+
+    table.insert(MovementLogs, 1, Entry)
+
+    if #MovementLogs > MAX_LOGS then
+        table.remove(MovementLogs)
+    end
+
+    RefreshMovement()
+end
+
+--==================================================
+-- ACTIVITY UI
+--==================================================
+
+local ActivityToggle = CreateToggle(
+    ActivityPage,
+    "ACTIVITY",
+    UDim2.new(0, 0, 0, 0),
+    function(Enabled)
+
+        ActivityEnabled = Enabled
+
+    end
+)
+
+local ActivityClear = Instance.new("TextButton")
+ActivityClear.Size = UDim2.new(0, 80, 0, 35)
+ActivityClear.Position = UDim2.new(0, 120, 0, 0)
+ActivityClear.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+ActivityClear.BorderSizePixel = 0
+ActivityClear.Text = "CLEAR"
+ActivityClear.TextColor3 = Color3.fromRGB(255, 255, 255)
+ActivityClear.TextSize = 12
+ActivityClear.Font = Enum.Font.GothamBold
+ActivityClear.Parent = ActivityPage
+
+Instance.new("UICorner", ActivityClear).CornerRadius = UDim.new(0, 7)
+
+ActivityClear.MouseButton1Click:Connect(function()
+
+    table.clear(ActivityLogs)
+
+    RefreshActivity()
+
+end)
+
+local ActivityCopy = Instance.new("TextButton")
+ActivityCopy.Size = UDim2.new(0, 80, 0, 35)
+ActivityCopy.Position = UDim2.new(0, 210, 0, 0)
+ActivityCopy.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+ActivityCopy.BorderSizePixel = 0
+ActivityCopy.Text = "COPY"
+ActivityCopy.TextColor3 = Color3.fromRGB(255, 255, 255)
+ActivityCopy.TextSize = 12
+ActivityCopy.Font = Enum.Font.GothamBold
+ActivityCopy.Parent = ActivityPage
+
+Instance.new("UICorner", ActivityCopy).CornerRadius = UDim.new(0, 7)
+
+ActivityCopy.MouseButton1Click:Connect(function()
+
+    if setclipboard then
+        setclipboard(ActivityInfo.Text)
+    end
+
+end)
 
 --==================================================
 -- ACTIVITY LIST
 --==================================================
 
-local ActivityList = Instance.new("ScrollingFrame")
-ActivityList.Size = UDim2.new(0, 315, 0, 300)
-ActivityList.Position = UDim2.new(0, 0, 0, 40)
-ActivityList.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+ActivityList = Instance.new("ScrollingFrame")
+ActivityList.Size = UDim2.new(0.48, -5, 1, -50)
+ActivityList.Position = UDim2.new(0, 0, 0, 45)
+ActivityList.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 ActivityList.BorderSizePixel = 0
 ActivityList.ScrollBarThickness = 5
 ActivityList.CanvasSize = UDim2.new(0, 0, 0, 0)
 ActivityList.Parent = ActivityPage
 
-local ActivityListCorner = Instance.new("UICorner")
-ActivityListCorner.CornerRadius = UDim.new(0, 8)
-ActivityListCorner.Parent = ActivityList
-
-local ActivityLayout = Instance.new("UIListLayout")
-ActivityLayout.Padding = UDim.new(0, 3)
-ActivityLayout.Parent = ActivityList
+Instance.new("UICorner", ActivityList).CornerRadius = UDim.new(0, 7)
 
 --==================================================
 -- ACTIVITY INFO
 --==================================================
 
-local ActivityInfo = Instance.new("TextBox")
-ActivityInfo.Size = UDim2.new(0, 325, 0, 300)
-ActivityInfo.Position = UDim2.new(0, 325, 0, 0)
-ActivityInfo.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-ActivityInfo.TextColor3 = Color3.fromRGB(230, 230, 230)
-ActivityInfo.PlaceholderText = "Select an activity."
-ActivityInfo.PlaceholderColor3 = Color3.fromRGB(120, 120, 120)
-ActivityInfo.Text = ""
+ActivityInfo = Instance.new("TextBox")
+ActivityInfo.Size = UDim2.new(0.52, -5, 1, -50)
+ActivityInfo.Position = UDim2.new(0.48, 5, 0, 45)
+ActivityInfo.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+ActivityInfo.BorderSizePixel = 0
+ActivityInfo.TextColor3 = Color3.fromRGB(220, 220, 220)
 ActivityInfo.TextSize = 12
 ActivityInfo.Font = Enum.Font.Code
 ActivityInfo.TextXAlignment = Enum.TextXAlignment.Left
@@ -198,98 +469,95 @@ ActivityInfo.TextYAlignment = Enum.TextYAlignment.Top
 ActivityInfo.MultiLine = true
 ActivityInfo.ClearTextOnFocus = false
 ActivityInfo.TextEditable = false
+ActivityInfo.TextWrapped = false
+ActivityInfo.Text = ""
 ActivityInfo.Parent = ActivityPage
 
-local ActivityInfoCorner = Instance.new("UICorner")
-ActivityInfoCorner.CornerRadius = UDim.new(0, 8)
-ActivityInfoCorner.Parent = ActivityInfo
+Instance.new("UICorner", ActivityInfo).CornerRadius = UDim.new(0, 7)
 
 --==================================================
--- ACTIVITY COPY
+-- MOVEMENT UI
 --==================================================
 
-local ActivityCopy = Instance.new("TextButton")
-ActivityCopy.Size = UDim2.new(0, 155, 0, 35)
-ActivityCopy.Position = UDim2.new(0, 325, 0, 310)
-ActivityCopy.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
-ActivityCopy.Text = "COPY LOG"
-ActivityCopy.TextColor3 = Color3.fromRGB(255, 255, 255)
-ActivityCopy.TextSize = 11
-ActivityCopy.Font = Enum.Font.GothamBold
-ActivityCopy.Parent = ActivityPage
+local MovementToggle = CreateToggle(
+    MovementPage,
+    "MOVEMENT",
+    UDim2.new(0, 0, 0, 0),
+    function(Enabled)
 
-local ActivityClear = Instance.new("TextButton")
-ActivityClear.Size = UDim2.new(0, 155, 0, 35)
-ActivityClear.Position = UDim2.new(0, 490, 0, 310)
-ActivityClear.BackgroundColor3 = Color3.fromRGB(65, 40, 40)
-ActivityClear.Text = "CLEAR"
-ActivityClear.TextColor3 = Color3.fromRGB(255, 255, 255)
-ActivityClear.TextSize = 11
-ActivityClear.Font = Enum.Font.GothamBold
-ActivityClear.Parent = ActivityPage
+        MovementEnabled = Enabled
 
---==================================================
--- MOVEMENT PAGE
---==================================================
+    end
+)
 
-local MovementPage = Instance.new("Frame")
-MovementPage.Size = UDim2.new(1, -40, 1, -95)
-MovementPage.Position = UDim2.new(0, 20, 0, 90)
-MovementPage.BackgroundTransparency = 1
-MovementPage.Visible = false
-MovementPage.Parent = Dashboard
+local MovementClear = Instance.new("TextButton")
+MovementClear.Size = UDim2.new(0, 80, 0, 35)
+MovementClear.Position = UDim2.new(0, 120, 0, 0)
+MovementClear.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+MovementClear.BorderSizePixel = 0
+MovementClear.Text = "CLEAR"
+MovementClear.TextColor3 = Color3.fromRGB(255, 255, 255)
+MovementClear.TextSize = 12
+MovementClear.Font = Enum.Font.GothamBold
+MovementClear.Parent = MovementPage
 
---==================================================
--- MOVEMENT ON/OFF
---==================================================
+Instance.new("UICorner", MovementClear).CornerRadius = UDim.new(0, 7)
 
-local MovementToggle = Instance.new("TextButton")
-MovementToggle.Size = UDim2.new(0, 120, 0, 30)
-MovementToggle.Position = UDim2.new(0, 0, 0, 0)
-MovementToggle.BackgroundColor3 = Color3.fromRGB(75, 45, 45)
-MovementToggle.Text = "MOVEMENT: OFF"
-MovementToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-MovementToggle.TextSize = 11
-MovementToggle.Font = Enum.Font.GothamBold
-MovementToggle.Parent = MovementPage
+MovementClear.MouseButton1Click:Connect(function()
 
-local MovementToggleCorner = Instance.new("UICorner")
-MovementToggleCorner.CornerRadius = UDim.new(0, 6)
-MovementToggleCorner.Parent = MovementToggle
+    table.clear(MovementLogs)
+    LastMovementEvent = nil
+
+    RefreshMovement()
+
+end)
+
+local MovementCopy = Instance.new("TextButton")
+MovementCopy.Size = UDim2.new(0, 80, 0, 35)
+MovementCopy.Position = UDim2.new(0, 210, 0, 0)
+MovementCopy.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+MovementCopy.BorderSizePixel = 0
+MovementCopy.Text = "COPY"
+MovementCopy.TextColor3 = Color3.fromRGB(255, 255, 255)
+MovementCopy.TextSize = 12
+MovementCopy.Font = Enum.Font.GothamBold
+MovementCopy.Parent = MovementPage
+
+Instance.new("UICorner", MovementCopy).CornerRadius = UDim.new(0, 7)
+
+MovementCopy.MouseButton1Click:Connect(function()
+
+    if setclipboard then
+        setclipboard(MovementInfo.Text)
+    end
+
+end)
 
 --==================================================
 -- MOVEMENT LIST
 --==================================================
 
-local MovementList = Instance.new("ScrollingFrame")
-MovementList.Size = UDim2.new(0, 315, 0, 300)
-MovementList.Position = UDim2.new(0, 0, 0, 40)
-MovementList.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MovementList = Instance.new("ScrollingFrame")
+MovementList.Size = UDim2.new(0.48, -5, 1, -50)
+MovementList.Position = UDim2.new(0, 0, 0, 45)
+MovementList.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 MovementList.BorderSizePixel = 0
 MovementList.ScrollBarThickness = 5
 MovementList.CanvasSize = UDim2.new(0, 0, 0, 0)
 MovementList.Parent = MovementPage
 
-local MovementListCorner = Instance.new("UICorner")
-MovementListCorner.CornerRadius = UDim.new(0, 8)
-MovementListCorner.Parent = MovementList
-
-local MovementLayout = Instance.new("UIListLayout")
-MovementLayout.Padding = UDim.new(0, 3)
-MovementLayout.Parent = MovementList
+Instance.new("UICorner", MovementList).CornerRadius = UDim.new(0, 7)
 
 --==================================================
 -- MOVEMENT INFO
 --==================================================
 
-local MovementInfo = Instance.new("TextBox")
-MovementInfo.Size = UDim2.new(0, 325, 0, 300)
-MovementInfo.Position = UDim2.new(0, 325, 0, 0)
-MovementInfo.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-MovementInfo.TextColor3 = Color3.fromRGB(230, 230, 230)
-MovementInfo.PlaceholderText = "Select a movement event."
-MovementInfo.PlaceholderColor3 = Color3.fromRGB(120, 120, 120)
-MovementInfo.Text = ""
+MovementInfo = Instance.new("TextBox")
+MovementInfo.Size = UDim2.new(0.52, -5, 1, -50)
+MovementInfo.Position = UDim2.new(0.48, 5, 0, 45)
+MovementInfo.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MovementInfo.BorderSizePixel = 0
+MovementInfo.TextColor3 = Color3.fromRGB(220, 220, 220)
 MovementInfo.TextSize = 12
 MovementInfo.Font = Enum.Font.Code
 MovementInfo.TextXAlignment = Enum.TextXAlignment.Left
@@ -297,784 +565,461 @@ MovementInfo.TextYAlignment = Enum.TextYAlignment.Top
 MovementInfo.MultiLine = true
 MovementInfo.ClearTextOnFocus = false
 MovementInfo.TextEditable = false
+MovementInfo.TextWrapped = false
+MovementInfo.Text = ""
 MovementInfo.Parent = MovementPage
 
-local MovementInfoCorner = Instance.new("UICorner")
-MovementInfoCorner.CornerRadius = UDim.new(0, 8)
-MovementInfoCorner.Parent = MovementInfo
-
---==================================================
--- MOVEMENT COPY / CLEAR
---==================================================
-
-local MovementCopy = Instance.new("TextButton")
-MovementCopy.Size = UDim2.new(0, 155, 0, 35)
-MovementCopy.Position = UDim2.new(0, 325, 0, 310)
-MovementCopy.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
-MovementCopy.Text = "COPY LOG"
-MovementCopy.TextColor3 = Color3.fromRGB(255, 255, 255)
-MovementCopy.TextSize = 11
-MovementCopy.Font = Enum.Font.GothamBold
-MovementCopy.Parent = MovementPage
-
-local MovementClear = Instance.new("TextButton")
-MovementClear.Size = UDim2.new(0, 155, 0, 35)
-MovementClear.Position = UDim2.new(0, 490, 0, 310)
-MovementClear.BackgroundColor3 = Color3.fromRGB(65, 40, 40)
-MovementClear.Text = "CLEAR"
-MovementClear.TextColor3 = Color3.fromRGB(255, 255, 255)
-MovementClear.TextSize = 11
-MovementClear.Font = Enum.Font.GothamBold
-MovementClear.Parent = MovementPage
-
---==================================================
--- REBUILD LIST
---==================================================
-
-local function RebuildActivityList()
-
-	for _, Child in ipairs(ActivityList:GetChildren()) do
-		if Child:IsA("TextButton") then
-			Child:Destroy()
-		end
-	end
-
-	for _, Entry in ipairs(ActivityLogs) do
-
-		local Button = Instance.new("TextButton")
-
-		Button.Size =
-			UDim2.new(1, -10, 0, 32)
-
-		Button.BackgroundColor3 =
-			Color3.fromRGB(40, 40, 40)
-
-		Button.TextColor3 =
-			Color3.fromRGB(235, 235, 235)
-
-		Button.TextSize = 10
-		Button.Font = Enum.Font.Code
-		Button.TextXAlignment =
-			Enum.TextXAlignment.Left
-
-		Button.TextTruncate =
-			Enum.TextTruncate.AtEnd
-
-		Button.Text =
-			"  " .. Entry.Short
-
-		Button.Parent = ActivityList
-
-		local Corner = Instance.new("UICorner")
-		Corner.CornerRadius = UDim.new(0, 6)
-		Corner.Parent = Button
-
-		Button.MouseButton1Click:Connect(
-			function()
-
-				SelectedActivityLog =
-					Entry.Full
-
-				ActivityInfo.Text =
-					Entry.Full
-
-			end
-		)
-
-	end
-
-	ActivityList.CanvasSize =
-		UDim2.new(
-			0,
-			0,
-			0,
-			ActivityLayout.AbsoluteContentSize.Y + 5
-		)
-
-end
-
-local function RebuildMovementList()
-
-	for _, Child in ipairs(MovementList:GetChildren()) do
-		if Child:IsA("TextButton") then
-			Child:Destroy()
-		end
-	end
-
-	for _, Entry in ipairs(MovementLogs) do
-
-		local Button = Instance.new("TextButton")
-
-		Button.Size =
-			UDim2.new(1, -10, 0, 32)
-
-		Button.BackgroundColor3 =
-			Color3.fromRGB(40, 40, 40)
-
-		Button.TextColor3 =
-			Color3.fromRGB(235, 235, 235)
-
-		Button.TextSize = 10
-		Button.Font = Enum.Font.Code
-		Button.TextXAlignment =
-			Enum.TextXAlignment.Left
-
-		Button.TextTruncate =
-			Enum.TextTruncate.AtEnd
-
-		Button.Text =
-			"  " .. Entry.Short
-
-		Button.Parent = MovementList
-
-		local Corner = Instance.new("UICorner")
-		Corner.CornerRadius = UDim.new(0, 6)
-		Corner.Parent = Button
-
-		Button.MouseButton1Click:Connect(
-			function()
-
-				SelectedMovementLog =
-					Entry.Full
-
-				MovementInfo.Text =
-					Entry.Full
-
-			end
-		)
-
-	end
-
-	MovementList.CanvasSize =
-		UDim2.new(
-			0,
-			0,
-			0,
-			MovementLayout.AbsoluteContentSize.Y + 5
-		)
-
-end
-
---==================================================
--- ADD ACTIVITY
---==================================================
-
-local function LogActivity(EventType, Object, Details)
-
-	if not ActivityEnabled then
-		return
-	end
-
-	local Name = "N/A"
-	local Class = "N/A"
-	local Path = "N/A"
-
-	if Object then
-
-		Name = Object.Name
-		Class = Object.ClassName
-
-		local Success, Result =
-			pcall(function()
-				return Object:GetFullName()
-			end)
-
-		if Success then
-			Path = Result
-		end
-
-	end
-
-	local Log = table.concat({
-		"================================",
-		"ACTIVITY EVENT",
-		"================================",
-		"",
-		"TIME",
-		os.date("%H:%M:%S"),
-		"",
-		"EVENT",
-		EventType,
-		"",
-		"NAME",
-		Name,
-		"",
-		"CLASS",
-		Class,
-		"",
-		"PATH",
-		Path,
-		"",
-		"DETAILS",
-		Details or "(none)"
-	}, "\n")
-
-	table.insert(ActivityLogs, 1, {
-		Short =
-			EventType ..
-			" • " ..
-			Name,
-
-		Full = Log
-	})
-
-	-- Keep newest 100
-
-	if #ActivityLogs > MAX_LOGS then
-		table.remove(ActivityLogs)
-	end
-
-	RebuildActivityList()
-
-end
-
---==================================================
--- ADD MOVEMENT
---==================================================
-
-local LastMovementEvent = nil
-
-local function LogMovement(State)
-
-	if not MovementEnabled then
-		return
-	end
-
-	if LastMovementEvent == State then
-		return
-	end
-
-	LastMovementEvent = State
-
-	local Character =
-		LocalPlayer.Character
-
-	local Humanoid =
-		Character and
-		Character:FindFirstChildOfClass(
-			"Humanoid"
-		)
-
-	local Root =
-		Character and
-		Character:FindFirstChild(
-			"HumanoidRootPart"
-		)
-
-	local Path = "N/A"
-
-	if Root then
-		Path = Root:GetFullName()
-	end
-
-	local Speed = 0
-
-	if Humanoid then
-		Speed = Humanoid.WalkSpeed
-	end
-
-	local Log = table.concat({
-		"================================",
-		"MOVEMENT EVENT",
-		"================================",
-		"",
-		"TIME",
-		os.date("%H:%M:%S"),
-		"",
-		"EVENT",
-		State,
-		"",
-		"CHARACTER",
-		Character and Character.Name or "N/A",
-		"",
-		"ROOT PATH",
-		Path,
-		"",
-		"WALK SPEED",
-		tostring(Speed)
-	}, "\n")
-
-	table.insert(MovementLogs, 1, {
-		Short = State,
-		Full = Log
-	})
-
-	if #MovementLogs > MAX_LOGS then
-		table.remove(MovementLogs)
-	end
-
-	RebuildMovementList()
-
-end
-
---==================================================
--- ACTIVITY TOGGLE
---==================================================
-
-ActivityToggle.MouseButton1Click:Connect(
-	function()
-
-		ActivityEnabled =
-			not ActivityEnabled
-
-		if ActivityEnabled then
-
-			ActivityToggle.Text =
-				"ACTIVITY: ON"
-
-			ActivityToggle.BackgroundColor3 =
-				Color3.fromRGB(40, 90, 55)
-
-		else
-
-			ActivityToggle.Text =
-				"ACTIVITY: OFF"
-
-			ActivityToggle.BackgroundColor3 =
-				Color3.fromRGB(75, 45, 45)
-
-		end
-
-	end
-)
-
---==================================================
--- MOVEMENT TOGGLE
---==================================================
-
-MovementToggle.MouseButton1Click:Connect(
-	function()
-
-		MovementEnabled =
-			not MovementEnabled
-
-		if MovementEnabled then
-
-			MovementToggle.Text =
-				"MOVEMENT: ON"
-
-			MovementToggle.BackgroundColor3 =
-				Color3.fromRGB(40, 90, 55)
-
-		else
-
-			MovementToggle.Text =
-				"MOVEMENT: OFF"
-
-			MovementToggle.BackgroundColor3 =
-				Color3.fromRGB(75, 45, 45)
-
-		end
-
-	end
-)
-
---==================================================
--- CHARACTER MONITOR
---==================================================
-
-local function MonitorCharacter(Character)
-
-	local Humanoid =
-		Character:WaitForChild("Humanoid")
-
-	Character.ChildAdded:Connect(
-		function(Child)
-
-			if Child:IsA("Tool") then
-
-				LogActivity(
-					"TOOL EQUIPPED",
-					Child,
-					"Tool appeared inside the character."
-				)
-
-			end
-
-		end
-	)
-
-	Character.ChildRemoved:Connect(
-		function(Child)
-
-			if Child:IsA("Tool") then
-
-				LogActivity(
-					"TOOL UNEQUIPPED",
-					Child,
-					"Tool was removed from the character."
-				)
-
-			end
-
-		end
-	)
-
-	Humanoid.StateChanged:Connect(
-		function(_, NewState)
-
-			if NewState ==
-				Enum.HumanoidStateType.Jumping then
-
-				LogMovement("JUMPING")
-
-			elseif NewState ==
-				Enum.HumanoidStateType.Freefall then
-
-				LogMovement("FALLING")
-
-			elseif NewState ==
-				Enum.HumanoidStateType.Landed then
-
-				LogMovement("LANDED")
-
-			elseif NewState ==
-				Enum.HumanoidStateType.Climbing then
-
-				LogMovement("CLIMBING")
-
-			elseif NewState ==
-				Enum.HumanoidStateType.Swimming then
-
-				LogMovement("SWIMMING")
-
-			elseif NewState ==
-				Enum.HumanoidStateType.Running then
-
-				LogMovement("RUNNING")
-
-			elseif NewState ==
-				Enum.HumanoidStateType.Seated then
-
-				LogMovement("SEATED")
-
-			end
-
-		end
-	)
-
-end
-
-if LocalPlayer.Character then
-	MonitorCharacter(LocalPlayer.Character)
-end
-
-LocalPlayer.CharacterAdded:Connect(
-	function(Character)
-
-		LastMovementEvent = nil
-
-		MonitorCharacter(Character)
-
-	end
-)
-
---==================================================
--- COPY ACTIVITY
---==================================================
-
-ActivityCopy.MouseButton1Click:Connect(
-	function()
-
-		if SelectedActivityLog == "" then
-			return
-		end
-
-		if setclipboard then
-
-			setclipboard(
-				SelectedActivityLog
-			)
-
-			ActivityCopy.Text =
-				"COPIED!"
-
-			task.delay(
-				1,
-				function()
-					ActivityCopy.Text =
-						"COPY LOG"
-				end
-			)
-
-		end
-
-	end
-)
-
---==================================================
--- COPY MOVEMENT
---==================================================
-
-MovementCopy.MouseButton1Click:Connect(
-	function()
-
-		if SelectedMovementLog == "" then
-			return
-		end
-
-		if setclipboard then
-
-			setclipboard(
-				SelectedMovementLog
-			)
-
-			MovementCopy.Text =
-				"COPIED!"
-
-			task.delay(
-				1,
-				function()
-					MovementCopy.Text =
-						"COPY LOG"
-				end
-			)
-
-		end
-
-	end
-)
-
---==================================================
--- CLEAR ACTIVITY
---==================================================
-
-ActivityClear.MouseButton1Click:Connect(
-	function()
-
-		ActivityLogs = {}
-		SelectedActivityLog = ""
-		ActivityInfo.Text = ""
-
-		RebuildActivityList()
-
-	end
-)
-
---==================================================
--- CLEAR MOVEMENT
---==================================================
-
-MovementClear.MouseButton1Click:Connect(
-	function()
-
-		MovementLogs = {}
-		SelectedMovementLog = ""
-		MovementInfo.Text = ""
-
-		RebuildMovementList()
-
-	end
-)
+Instance.new("UICorner", MovementInfo).CornerRadius = UDim.new(0, 7)
 
 --==================================================
 -- TAB SWITCHING
 --==================================================
 
-ActivityTab.MouseButton1Click:Connect(
-	function()
+ActivityTab.MouseButton1Click:Connect(function()
 
-		ActivityPage.Visible = true
-		MovementPage.Visible = false
+    ActivityPage.Visible = true
+    MovementPage.Visible = false
 
-		ActivityTab.BackgroundColor3 =
-			Color3.fromRGB(60, 60, 60)
+end)
 
-		MovementTab.BackgroundColor3 =
-			Color3.fromRGB(40, 40, 40)
+MovementTab.MouseButton1Click:Connect(function()
 
-	end
-)
+    ActivityPage.Visible = false
+    MovementPage.Visible = true
 
-MovementTab.MouseButton1Click:Connect(
-	function()
-
-		ActivityPage.Visible = false
-		MovementPage.Visible = true
-
-		ActivityTab.BackgroundColor3 =
-			Color3.fromRGB(40, 40, 40)
-
-		MovementTab.BackgroundColor3 =
-			Color3.fromRGB(60, 60, 60)
-
-	end
-)
+end)
 
 --==================================================
--- LOCK
+-- ACTIVITY MONITOR
 --==================================================
+
+local function MonitorClickDetector(Detector)
+
+    if MonitoredClicks[Detector] then
+        return
+    end
+
+    MonitoredClicks[Detector] = true
+
+    Detector.MouseClick:Connect(function(Player)
+
+        if Player == LocalPlayer then
+
+            local Target = Detector.Parent
+
+            LogActivity(
+                "CLICK",
+                Target,
+                "Interaction: ClickDetector"
+            )
+
+        end
+
+    end)
+
+end
+
+local function MonitorProximityPrompt(Prompt)
+
+    if MonitoredPrompts[Prompt] then
+        return
+    end
+
+    MonitoredPrompts[Prompt] = true
+
+    Prompt.Triggered:Connect(function(Player)
+
+        if Player == LocalPlayer then
+
+            local Target = Prompt.Parent
+
+            local Details =
+                "Interaction: ProximityPrompt"
+
+            if Prompt.ActionText ~= "" then
+                Details =
+                    Details ..
+                    "\nActionText: " ..
+                    Prompt.ActionText
+            end
+
+            if Prompt.ObjectText ~= "" then
+                Details =
+                    Details ..
+                    "\nObjectText: " ..
+                    Prompt.ObjectText
+            end
+
+            LogActivity(
+                "PROMPT",
+                Target,
+                Details
+            )
+
+        end
+
+    end)
+
+end
+
+--==================================================
+-- TOOL MONITOR
+--==================================================
+
+local function MonitorTool(Tool)
+
+    if not Tool:IsA("Tool") then
+        return
+    end
+
+    if MonitoredTools[Tool] then
+        return
+    end
+
+    MonitoredTools[Tool] = true
+
+    Tool.Activated:Connect(function()
+
+        LogActivity(
+            "TOOL ACTIVATED",
+            Tool,
+            "Tool.Activated"
+        )
+
+    end)
+
+    Tool.Equipped:Connect(function()
+
+        LogActivity(
+            "TOOL EQUIPPED",
+            Tool,
+            "Tool.Equipped"
+        )
+
+    end)
+
+    Tool.Unequipped:Connect(function()
+
+        LogActivity(
+            "TOOL UNEQUIPPED",
+            Tool,
+            "Tool.Unequipped"
+        )
+
+    end)
+
+end
+
+--==================================================
+-- GUI BUTTON MONITOR
+--==================================================
+
+local function MonitorGuiButton(Button)
+
+    if not Button:IsA("GuiButton") then
+        return
+    end
+
+    if MonitoredButtons[Button] then
+        return
+    end
+
+    MonitoredButtons[Button] = true
+
+    Button.Activated:Connect(function()
+
+        LogActivity(
+            "GUI CLICK",
+            Button,
+            "GuiButton.Activated"
+        )
+
+    end)
+
+end
+
+--==================================================
+-- INITIAL SCAN
+--==================================================
+
+local function ScanWorkspace()
+
+    for _, Object in ipairs(Workspace:GetDescendants()) do
+
+        if Object:IsA("ClickDetector") then
+            MonitorClickDetector(Object)
+
+        elseif Object:IsA("ProximityPrompt") then
+            MonitorProximityPrompt(Object)
+
+        end
+
+    end
+
+end
+
+local function ScanTools()
+
+    local Backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+
+    if Backpack then
+
+        for _, Object in ipairs(Backpack:GetChildren()) do
+            MonitorTool(Object)
+        end
+
+    end
+
+    local Character = LocalPlayer.Character
+
+    if Character then
+
+        for _, Object in ipairs(Character:GetChildren()) do
+            MonitorTool(Object)
+        end
+
+    end
+
+end
+
+local function ScanGui()
+
+    for _, Object in ipairs(PlayerGui:GetDescendants()) do
+
+        if Object:IsA("GuiButton") then
+            MonitorGuiButton(Object)
+        end
+
+    end
+
+end
+
+ScanWorkspace()
+ScanTools()
+ScanGui()
+
+--==================================================
+-- NEW OBJECT MONITORING
+--==================================================
+
+Workspace.DescendantAdded:Connect(function(Object)
+
+    if Object:IsA("ClickDetector") then
+        MonitorClickDetector(Object)
+
+    elseif Object:IsA("ProximityPrompt") then
+        MonitorProximityPrompt(Object)
+
+    end
+
+end)
+
+PlayerGui.DescendantAdded:Connect(function(Object)
+
+    if Object:IsA("GuiButton") then
+        MonitorGuiButton(Object)
+    end
+
+end)
+
+--==================================================
+-- BACKPACK / CHARACTER TOOL MONITORING
+--==================================================
+
+local function MonitorContainer(Container)
+
+    if not Container then
+        return
+    end
+
+    Container.ChildAdded:Connect(function(Object)
+
+        if Object:IsA("Tool") then
+            MonitorTool(Object)
+        end
+
+    end)
+
+end
+
+local Backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+
+if Backpack then
+    MonitorContainer(Backpack)
+end
+
+LocalPlayer.CharacterAdded:Connect(function(Character)
+
+    MonitorContainer(Character)
+
+    task.wait(0.2)
+
+    ScanTools()
+
+    if MovementEnabled then
+        LastMovementEvent = nil
+    end
+
+end)
+
+--==================================================
+-- MOVEMENT MONITOR
+--==================================================
+
+local function SetupMovement(Character)
+
+    local Humanoid = Character:WaitForChild("Humanoid")
+
+    table.clear(MovementConnections)
+
+    local StateConnection =
+        Humanoid.StateChanged:Connect(function(_, NewState)
+
+            if not MovementEnabled then
+                return
+            end
+
+            if NewState == Enum.HumanoidStateType.Jumping then
+
+                LogMovement("JUMPING")
+
+            elseif NewState == Enum.HumanoidStateType.Freefall then
+
+                LogMovement("FALLING")
+
+            elseif NewState == Enum.HumanoidStateType.Landed then
+
+                LogMovement("LANDED")
+
+            elseif NewState == Enum.HumanoidStateType.Climbing then
+
+                LogMovement("CLIMBING")
+
+            elseif NewState == Enum.HumanoidStateType.Swimming then
+
+                LogMovement("SWIMMING")
+
+            elseif NewState == Enum.HumanoidStateType.Seated then
+
+                LogMovement("SEATED")
+
+            elseif NewState == Enum.HumanoidStateType.Running then
+
+                LogMovement("RUNNING")
+
+            elseif NewState == Enum.HumanoidStateType.RunningNoPhysics then
+
+                LogMovement("RUNNING")
+
+            end
+
+        end)
+
+    table.insert(MovementConnections, StateConnection)
+
+end
+
+if LocalPlayer.Character then
+    SetupMovement(LocalPlayer.Character)
+end
+
+LocalPlayer.CharacterAdded:Connect(function(Character)
+
+    SetupMovement(Character)
+
+end)
+
+--==================================================
+-- DRAGGING
+--==================================================
+
+local function MakeDraggable(Object)
+
+    local Dragging = false
+    local DragStart
+    local StartPosition
+
+    Object.InputBegan:Connect(function(Input)
+
+        if Input.UserInputType == Enum.UserInputType.MouseButton1
+            or Input.UserInputType == Enum.UserInputType.Touch then
+
+            Dragging = true
+            DragStart = Input.Position
+            StartPosition = Object.Position
+
+            Input.Changed:Connect(function()
+
+                if Input.UserInputState == Enum.UserInputState.End then
+                    Dragging = false
+                end
+
+            end)
+
+        end
+
+    end)
+
+    UserInputService.InputChanged:Connect(function(Input)
+
+        if not Dragging then
+            return
+        end
+
+        if Input.UserInputType == Enum.UserInputType.MouseMovement
+            or Input.UserInputType == Enum.UserInputType.Touch then
+
+            local Delta = Input.Position - DragStart
+
+            Object.Position = UDim2.new(
+                StartPosition.X.Scale,
+                StartPosition.X.Offset + Delta.X,
+                StartPosition.Y.Scale,
+                StartPosition.Y.Offset + Delta.Y
+            )
+
+        end
+
+    end)
+
+end
+
+MakeDraggable(YButton)
+MakeDraggable(Dashboard)
+
+--==================================================
+-- LOCK BUTTON
+--==================================================
+
+local LockButton = Instance.new("TextButton")
+LockButton.Size = UDim2.new(0, 35, 0, 35)
+LockButton.Position = UDim2.new(1, -85, 0, 5)
+LockButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+LockButton.BorderSizePixel = 0
+LockButton.Text = "🔓"
+LockButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+LockButton.TextSize = 15
+LockButton.Font = Enum.Font.GothamBold
+LockButton.Parent = Dashboard
+
+Instance.new("UICorner", LockButton).CornerRadius = UDim.new(0, 7)
 
 local Locked = false
 
-LockButton.MouseButton1Click:Connect(
-	function()
+LockButton.MouseButton1Click:Connect(function()
 
-		Locked = not Locked
+    Locked = not Locked
 
-		LockButton.Text =
-			Locked and "🔒" or "🔓"
+    if Locked then
 
-	end
-)
+        LockButton.Text = "🔒"
 
---==================================================
--- TOGGLE DASHBOARD
---==================================================
+    else
 
-YButton.MouseButton1Click:Connect(
-	function()
+        LockButton.Text = "🔓"
 
-		Dashboard.Visible =
-			not Dashboard.Visible
+    end
 
-	end
-)
+end)
 
---==================================================
--- DRAG Y BUTTON
---==================================================
-
-local DraggingY = false
-local DragStartY
-local StartPosY
-
-YButton.InputBegan:Connect(
-	function(Input)
-
-		if Locked then
-			return
-		end
-
-		if Input.UserInputType ==
-			Enum.UserInputType.MouseButton1
-			or Input.UserInputType ==
-			Enum.UserInputType.Touch then
-
-			DraggingY = true
-			DragStartY = Input.Position
-			StartPosY = YButton.Position
-
-			Input.Changed:Connect(
-				function()
-
-					if Input.UserInputState ==
-						Enum.UserInputState.End then
-
-						DraggingY = false
-
-					end
-
-				end
-			)
-
-		end
-
-	end
-)
-
---==================================================
--- DRAG DASHBOARD
---==================================================
-
-local DraggingDashboard = false
-local DragStartDashboard
-local StartDashboardPosition
-
-Title.InputBegan:Connect(
-	function(Input)
-
-		if Locked then
-			return
-		end
-
-		if Input.UserInputType ==
-			Enum.UserInputType.MouseButton1
-			or Input.UserInputType ==
-			Enum.UserInputType.Touch then
-
-			DraggingDashboard = true
-			DragStartDashboard = Input.Position
-			StartDashboardPosition =
-				Dashboard.Position
-
-			Input.Changed:Connect(
-				function()
-
-					if Input.UserInputState ==
-						Enum.UserInputState.End then
-
-						DraggingDashboard = false
-
-					end
-
-				end
-			)
-
-		end
-
-	end
-)
-
---==================================================
--- INPUT MOVEMENT
---==================================================
-
-UserInputService.InputChanged:Connect(
-	function(Input)
-
-		if DraggingY and not Locked then
-
-			if Input.UserInputType ==
-				Enum.UserInputType.MouseMovement
-				or Input.UserInputType ==
-				Enum.UserInputType.Touch then
-
-				local Delta =
-					Input.Position - DragStartY
-
-				YButton.Position =
-					UDim2.new(
-						StartPosY.X.Scale,
-						StartPosY.X.Offset + Delta.X,
-						StartPosY.Y.Scale,
-						StartPosY.Y.Offset + Delta.Y
-					)
-
-				LockButton.Position =
-					UDim2.new(
-						YButton.Position.X.Scale,
-						YButton.Position.X.Offset + 60,
-						YButton.Position.Y.Scale,
-						YButton.Position.Y.Offset + 11
-					)
-
-			end
-
-		end
-
-		if DraggingDashboard and not Locked then
-
-			if Input.UserInputType ==
-				Enum.UserInputType.MouseMovement
-				or Input.UserInputType ==
-				Enum.UserInputType.Touch then
-
-				local Delta =
-					Input.Position -
-					DragStartDashboard
-
-				Dashboard.Position =
-					UDim2.new(
-						StartDashboardPosition.X.Scale,
-						StartDashboardPosition.X.Offset + Delta.X,
-						StartDashboardPosition.Y.Scale,
-						StartDashboardPosition.Y.Offset + Delta.Y
-					)
-
-			end
-
-		end
-
-	end
-)
+print("YDashboard loaded.")
