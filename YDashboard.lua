@@ -7,39 +7,6 @@ local ProximityPromptService = game:GetService("ProximityPromptService")
 local LocalPlayer = Players.LocalPlayer
 
 --==================================================
--- CONNECTION CLEANUP
---==================================================
-
-local Connections = {}
-local Terminated = false
-
-local function Connect(signal, callback)
-	local connection = signal:Connect(callback)
-	table.insert(Connections, connection)
-	return connection
-end
-
-local function TerminateDashboard()
-	if Terminated then
-		return
-	end
-
-	Terminated = true
-
-	for _, connection in ipairs(Connections) do
-		if connection and connection.Connected then
-			connection:Disconnect()
-		end
-	end
-
-	Connections = {}
-
-	if ScreenGui then
-		ScreenGui:Destroy()
-	end
-end
-
---==================================================
 -- SCREEN GUI
 --==================================================
 
@@ -184,13 +151,13 @@ end
 
 UpdatePrompts()
 
-Connect(ProximityPromptService.PromptShown, function(prompt)
+ProximityPromptService.PromptShown:Connect(function(prompt)
 	if InstantInteract then
 		prompt.HoldDuration = 0
 	end
 end)
 
-Connect(InstantInteractButton.MouseButton1Click, function()
+InstantInteractButton.MouseButton1Click:Connect(function()
 	InstantInteract = not InstantInteract
 
 	InstantInteractButton.Text =
@@ -382,7 +349,7 @@ local function ScanEggs()
 	print("================================")
 end
 
-Connect(RefreshEggs.MouseButton1Click, ScanEggs)
+RefreshEggs.MouseButton1Click:Connect(ScanEggs)
 
 --==================================================
 -- DATA INSPECTOR
@@ -502,10 +469,10 @@ local InspectCorner = Instance.new("UICorner")
 InspectCorner.CornerRadius = UDim.new(0, 8)
 InspectCorner.Parent = InspectButton
 
-Connect(InspectButton.MouseButton1Click, InspectData)
+InspectButton.MouseButton1Click:Connect(InspectData)
 
 --==================================================
--- TERMINATE BUTTON
+-- TERMINATE
 --==================================================
 
 local TerminateButton = Instance.new("TextButton")
@@ -523,13 +490,15 @@ local TerminateCorner = Instance.new("UICorner")
 TerminateCorner.CornerRadius = UDim.new(0, 8)
 TerminateCorner.Parent = TerminateButton
 
-Connect(TerminateButton.MouseButton1Click, TerminateDashboard)
+TerminateButton.MouseButton1Click:Connect(function()
+	ScreenGui.Enabled = false
+end)
 
 --==================================================
 -- TAB SWITCHING
 --==================================================
 
-Connect(CharacterTab.MouseButton1Click, function()
+CharacterTab.MouseButton1Click:Connect(function()
 
 	DataPage.Visible = false
 	InstantInteractButton.Visible = true
@@ -539,7 +508,7 @@ Connect(CharacterTab.MouseButton1Click, function()
 
 end)
 
-Connect(DataTab.MouseButton1Click, function()
+DataTab.MouseButton1Click:Connect(function()
 
 	DataPage.Visible = true
 	InstantInteractButton.Visible = false
@@ -560,16 +529,16 @@ local DraggingY = false
 local DragStartY
 local StartPosY
 
-Connect(YButton.MouseButton1Click, function()
+YButton.MouseButton1Click:Connect(function()
 	Dashboard.Visible = not Dashboard.Visible
 end)
 
-Connect(LockButton.MouseButton1Click, function()
+LockButton.MouseButton1Click:Connect(function()
 	Locked = not Locked
 	LockButton.Text = Locked and "🔒" or "🔓"
 end)
 
-Connect(YButton.InputBegan, function(input)
+YButton.InputBegan:Connect(function(input)
 
 	if Locked then
 		return
@@ -582,7 +551,7 @@ Connect(YButton.InputBegan, function(input)
 		DragStartY = input.Position
 		StartPosY = YButton.Position
 
-		Connect(input.Changed, function()
+		input.Changed:Connect(function()
 
 			if input.UserInputState == Enum.UserInputState.End then
 				DraggingY = false
@@ -592,7 +561,7 @@ Connect(YButton.InputBegan, function(input)
 	end
 end)
 
-Connect(UserInputService.InputChanged, function(input)
+UserInputService.InputChanged:Connect(function(input)
 
 	if not DraggingY or Locked then
 		return
@@ -627,7 +596,7 @@ local DraggingDashboard = false
 local DragStartDashboard
 local StartDashboardPosition
 
-Connect(Title.InputBegan, function(input)
+Title.InputBegan:Connect(function(input)
 
 	if input.UserInputType == Enum.UserInputType.MouseButton1
 		or input.UserInputType == Enum.UserInputType.Touch then
@@ -636,7 +605,7 @@ Connect(Title.InputBegan, function(input)
 		DragStartDashboard = input.Position
 		StartDashboardPosition = Dashboard.Position
 
-		Connect(input.Changed, function()
+		input.Changed:Connect(function()
 
 			if input.UserInputState == Enum.UserInputState.End then
 				DraggingDashboard = false
@@ -646,7 +615,7 @@ Connect(Title.InputBegan, function(input)
 	end
 end)
 
-Connect(UserInputService.InputChanged, function(input)
+UserInputService.InputChanged:Connect(function(input)
 
 	if not DraggingDashboard then
 		return
