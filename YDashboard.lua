@@ -139,7 +139,90 @@ PetsTab.Parent = Dashboard
 local PetsCorner = Instance.new("UICorner")
 PetsCorner.CornerRadius = UDim.new(0, 8)
 PetsCorner.Parent = PetsTab
+--// CLIENT TAB
 
+local ClientTab = Instance.new("TextButton")
+ClientTab.Name = "ClientTab"
+ClientTab.Size = UDim2.new(0, 140, 0, 40)
+ClientTab.Position = UDim2.new(0, 465, 0, 60)
+ClientTab.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
+ClientTab.Text = "CLIENT"
+ClientTab.TextColor3 = Color3.fromRGB(255, 255, 255)
+ClientTab.TextSize = 14
+ClientTab.Font = Enum.Font.GothamBold
+ClientTab.Parent = Dashboard
+
+local ClientCorner = Instance.new("UICorner")
+ClientCorner.CornerRadius = UDim.new(0, 8)
+ClientCorner.Parent = ClientTab
+
+
+local ClientPage = Instance.new("Frame")
+ClientPage.Name = "ClientPage"
+ClientPage.Size = UDim2.new(1, -30, 1, -115)
+ClientPage.Position = UDim2.new(0, 15, 0, 110)
+ClientPage.BackgroundTransparency = 1
+ClientPage.Visible = false
+ClientPage.Parent = Dashboard
+
+
+local ClientTitle = Instance.new("TextLabel")
+ClientTitle.Size = UDim2.new(1, 0, 0, 35)
+ClientTitle.BackgroundTransparency = 1
+ClientTitle.Text = "CLIENT INSPECTOR"
+ClientTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+ClientTitle.TextSize = 18
+ClientTitle.Font = Enum.Font.GothamBold
+ClientTitle.TextXAlignment = Enum.TextXAlignment.Left
+ClientTitle.Parent = ClientPage
+
+
+local ClientStatus = Instance.new("TextLabel")
+ClientStatus.Size = UDim2.new(1, -20, 0, 30)
+ClientStatus.Position = UDim2.new(0, 0, 0, 35)
+ClientStatus.BackgroundTransparency = 1
+ClientStatus.Text = "Ready"
+ClientStatus.TextColor3 = Color3.fromRGB(180, 180, 180)
+ClientStatus.TextSize = 13
+ClientStatus.Font = Enum.Font.Gotham
+ClientStatus.TextXAlignment = Enum.TextXAlignment.Left
+ClientStatus.Parent = ClientPage
+
+
+local ClientList = Instance.new("ScrollingFrame")
+ClientList.Name = "ClientList"
+ClientList.Size = UDim2.new(1, 0, 1, -125)
+ClientList.Position = UDim2.new(0, 0, 0, 70)
+ClientList.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+ClientList.BorderSizePixel = 0
+ClientList.ScrollBarThickness = 6
+ClientList.CanvasSize = UDim2.new(0, 0, 0, 0)
+ClientList.Parent = ClientPage
+
+local ClientListCorner = Instance.new("UICorner")
+ClientListCorner.CornerRadius = UDim.new(0, 8)
+ClientListCorner.Parent = ClientList
+
+
+local ClientLayout = Instance.new("UIListLayout")
+ClientLayout.Padding = UDim.new(0, 4)
+ClientLayout.Parent = ClientList
+
+
+local RefreshClient = Instance.new("TextButton")
+RefreshClient.Name = "RefreshClient"
+RefreshClient.Size = UDim2.new(0, 200, 0, 40)
+RefreshClient.Position = UDim2.new(0, 0, 1, -45)
+RefreshClient.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+RefreshClient.Text = "SCAN CLIENT"
+RefreshClient.TextColor3 = Color3.fromRGB(255, 255, 255)
+RefreshClient.TextSize = 14
+RefreshClient.Font = Enum.Font.GothamBold
+RefreshClient.Parent = ClientPage
+
+local RefreshClientCorner = Instance.new("UICorner")
+RefreshClientCorner.CornerRadius = UDim.new(0, 8)
+RefreshClientCorner.Parent = RefreshClient
 --==================================================
 -- INSTANT INTERACT
 --==================================================
