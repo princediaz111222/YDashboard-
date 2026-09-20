@@ -1,5 +1,6 @@
 --// YDashboard
---// Activity + Movement Monitor + Event Inspector
+--// Activity + Movement Monitor
+--// Deep Client-Side Object Inspector
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -13,6 +14,7 @@ local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 --==================================================
 
 local MAX_LOGS = 100
+local MAX_INSPECTED_OBJECTS = 500
 
 local ActivityEnabled = false
 local MovementEnabled = false
@@ -272,7 +274,7 @@ local MovementCopy = CreateButton(
 )
 
 --==================================================
--- TWO-PANEL LAYOUT
+-- PANELS
 --==================================================
 
 local function CreatePanel(Parent, Position, Size)
@@ -330,67 +332,308 @@ local MovementDetails = CreatePanel(
 )
 
 --==================================================
--- DETAILS LABEL
+-- PANEL CLEAR
+--==================================================
+
+local function ClearPanel(Panel)
+
+    for _, Child in ipairs(Panel:GetChildren()) do
+
+        if not Child:IsA("UIListLayout")
+        and not Child:IsA("UIPadding") then
+
+            Child:Destroy()
+
+        end
+
+    end
+
+end
+
+--==================================================
+-- TEXT LABEL
 --==================================================
 
 local function CreateDetailsLabel(Parent, Text)
 
     local Label = Instance.new("TextLabel")
-    Label.Size = UDim2.new(1, -5, 0, 25)
+
+    Label.Size = UDim2.new(1, -5, 0, 20)
     Label.AutomaticSize = Enum.AutomaticSize.Y
     Label.BackgroundTransparency = 1
+
     Label.Text = Text
     Label.TextColor3 = Color3.fromRGB(220, 220, 220)
-    Label.TextSize = 13
+    Label.TextSize = 12
     Label.Font = Enum.Font.Code
+
     Label.TextXAlignment = Enum.TextXAlignment.Left
     Label.TextYAlignment = Enum.TextYAlignment.Top
     Label.TextWrapped = true
+
     Label.Parent = Parent
 
     return Label
 end
 
-local function ClearPanel(Panel)
+--==================================================
+-- SAFE VALUE READER
+--==================================================
 
-    for _, Child in ipairs(Panel:GetChildren()) do
-        if not Child:IsA("UIListLayout")
-        and not Child:IsA("UIPadding") then
-            Child:Destroy()
-        end
+local function ReadValue(Object)
+
+    local Success, Value = pcall(function()
+        return Object.Value
+    end)
+
+    if not Success then
+        return nil
     end
+
+    if typeof(Value) == "Instance" then
+
+        if Value then
+            return Value:GetFullName()
+        end
+
+        return "nil"
+    end
+
+    return Value
+end
+
+--==================================================
+-- VALUE TYPE CHECK
+--==================================================
+
+local function IsValueObject(Object)
+
+    return Object:IsA("ValueBase")
+end
+
+--==================================================
+-- ATTRIBUTE READER
+--==================================================
+
+local function GetAttributes(Object)
+
+    local Attributes = {}
+
+    local Success, Result = pcall(function()
+        return Object:GetAttributes()
+    end)
+
+    if not Success then
+        return Attributes
+    end
+
+    for Name, Value in pairs(Result) do
+
+        table.insert(
+            Attributes,
+            {
+                Name = tostring(Name),
+                Value = tostring(Value),
+                Type = typeof(Value)
+            }
+        )
+
+    end
+
+    table.sort(Attributes, function(A, B)
+        return A.Name:lower() < B.Name:lower()
+    end)
+
+    return Attributes
 
 end
 
 --==================================================
--- OBJECT PATH
+-- DEEP INSPECTION
 --==================================================
 
-local function GetPath(Object)
+local function BuildDeepInspection(Object)
+
+    if not Object then
+        return nil
+    end
+
+    local Data = {
+        Name = Object.Name,
+        Class = Object.ClassName,
+        Path = "nil",
+        Ancestors = {},
+        Children = {},
+        Attributes = {},
+        Values = {},
+        Properties = {}
+    }
+
+    pcall(function()
+        Data.Path = Object:GetFullName()
+    end)
+
+    --==================================================
+    -- ANCESTORS
+    --==================================================
+
+    local Current = Object
+
+    while Current and Current ~= game do
+
+        table.insert(
+            Data.Ancestors,
+            1,
+            {
+                Name = Current.Name,
+                Class = Current.ClassName
+            }
+        )
+
+        Current = Current.Parent
+
+    end
+
+    --==================================================
+    -- ATTRIBUTES
+    --==================================================
+
+    Data.Attributes = GetAttributes(Object)
+
+    --==================================================
+    -- CHILDREN
+    --==================================================
+
+    local Success, Children = pcall(function()
+        return Object:GetChildren()
+    end)
+
+    if Success then
+
+        for _, Child in ipairs(Children) do
+
+            local ChildInfo = {
+                Name = Child.Name,
+                Class = Child.ClassName
+            }
+
+            if IsValueObject(Child) then
+
+                local Value = ReadValue(Child)
+
+                ChildInfo.Value = tostring(Value)
+
+                table.insert(
+                    Data.Values,
+                    {
+                        Path = GetPathSafe(Child),
+                        Name = Child.Name,
+                        Class = Child.ClassName,
+                        Value = tostring(Value)
+                    }
+                )
+
+            end
+
+            table.insert(Data.Children, ChildInfo)
+
+        end
+
+    end
+
+    --==================================================
+    -- OBJECT ITSELF IF VALUE
+    --==================================================
+
+    if IsValueObject(Object) then
+
+        local Value = ReadValue(Object)
+
+        table.insert(
+            Data.Values,
+            {
+                Path = Data.Path,
+                Name = Object.Name,
+                Class = Object.ClassName,
+                Value = tostring(Value)
+            }
+        )
+
+    end
+
+    return Data
+
+end
+
+--==================================================
+-- SAFE PATH
+--==================================================
+
+function GetPathSafe(Object)
 
     if not Object then
         return "nil"
     end
 
-    local Success, Result = pcall(function()
+    local Success, Path = pcall(function()
         return Object:GetFullName()
     end)
 
-    return Success and Result or Object.Name
+    if Success then
+        return Path
+    end
+
+    return Object.Name
 end
 
 --==================================================
--- IGNORE YDASHBOARD
+-- RECURSIVE DESCENDANT INSPECTION
 --==================================================
 
-local function IsYDashboardObject(Object)
+local function CollectDescendants(Object, Output, Depth)
 
-    if not Object then
-        return false
+    Depth = Depth or 0
+
+    if Depth > 12 then
+        return
     end
 
-    return Object == ScreenGui
-        or Object:IsDescendantOf(ScreenGui)
+    local Success, Children = pcall(function()
+        return Object:GetChildren()
+    end)
+
+    if not Success then
+        return
+    end
+
+    for _, Child in ipairs(Children) do
+
+        if #Output >= MAX_INSPECTED_OBJECTS then
+            return
+        end
+
+        local Info = {
+            Name = Child.Name,
+            Class = Child.ClassName,
+            Path = GetPathSafe(Child),
+            Depth = Depth + 1
+        }
+
+        if IsValueObject(Child) then
+            Info.Value = tostring(ReadValue(Child))
+        end
+
+        Info.Attributes = GetAttributes(Child)
+
+        table.insert(Output, Info)
+
+        CollectDescendants(
+            Child,
+            Output,
+            Depth + 1
+        )
+
+    end
 
 end
 
@@ -403,10 +646,12 @@ local function ShowActivityDetails(Log)
     ClearPanel(ActivityDetails)
 
     if not Log then
+
         CreateDetailsLabel(
             ActivityDetails,
             "Tap an activity entry to inspect it."
         )
+
         return
     end
 
@@ -417,35 +662,340 @@ local function ShowActivityDetails(Log)
 
     CreateDetailsLabel(
         ActivityDetails,
-        "Event: " .. tostring(Log.EventType)
+        "Event: " .. Log.EventType
     )
 
     CreateDetailsLabel(
         ActivityDetails,
-        "Time: " .. tostring(Log.Time)
+        "Time: " .. Log.Time
     )
 
     CreateDetailsLabel(
         ActivityDetails,
-        "Name: " .. tostring(Log.Name)
+        ""
     )
 
     CreateDetailsLabel(
         ActivityDetails,
-        "Class: " .. tostring(Log.Class)
+        "TARGET"
     )
 
     CreateDetailsLabel(
         ActivityDetails,
-        "Path: " .. tostring(Log.Path)
+        "Name: " .. Log.Name
     )
 
-    if Log.Details and Log.Details ~= "" then
+    CreateDetailsLabel(
+        ActivityDetails,
+        "Class: " .. Log.Class
+    )
+
+    CreateDetailsLabel(
+        ActivityDetails,
+        "Path: " .. Log.Path
+    )
+
+    if Log.Details ~= "" then
 
         CreateDetailsLabel(
             ActivityDetails,
-            "Details:\n" .. Log.Details
+            ""
         )
+
+        CreateDetailsLabel(
+            ActivityDetails,
+            "INTERACTION"
+        )
+
+        CreateDetailsLabel(
+            ActivityDetails,
+            Log.Details
+        )
+
+    end
+
+    if not Log.Object then
+        return
+    end
+
+    local Object = Log.Object
+
+    --==================================================
+    -- ANCESTORS
+    --==================================================
+
+    CreateDetailsLabel(
+        ActivityDetails,
+        ""
+    )
+
+    CreateDetailsLabel(
+        ActivityDetails,
+        "ANCESTOR HIERARCHY"
+    )
+
+    local Current = Object
+    local Ancestors = {}
+
+    while Current and Current ~= game do
+
+        table.insert(
+            Ancestors,
+            1,
+            Current.Name ..
+            " [" ..
+            Current.ClassName ..
+            "]"
+        )
+
+        Current = Current.Parent
+
+    end
+
+    for _, Text in ipairs(Ancestors) do
+
+        CreateDetailsLabel(
+            ActivityDetails,
+            Text
+        )
+
+    end
+
+    --==================================================
+    -- ATTRIBUTES
+    --==================================================
+
+    local Attributes = GetAttributes(Object)
+
+    CreateDetailsLabel(
+        ActivityDetails,
+        ""
+    )
+
+    CreateDetailsLabel(
+        ActivityDetails,
+        "ATTRIBUTES (" ..
+        tostring(#Attributes) ..
+        ")"
+    )
+
+    if #Attributes == 0 then
+
+        CreateDetailsLabel(
+            ActivityDetails,
+            "None"
+        )
+
+    else
+
+        for _, Attribute in ipairs(Attributes) do
+
+            CreateDetailsLabel(
+                ActivityDetails,
+                Attribute.Name ..
+                " = " ..
+                Attribute.Value ..
+                " [" ..
+                Attribute.Type ..
+                "]"
+            )
+
+        end
+
+    end
+
+    --==================================================
+    -- DIRECT CHILDREN
+    --==================================================
+
+    local Children = Object:GetChildren()
+
+    CreateDetailsLabel(
+        ActivityDetails,
+        ""
+    )
+
+    CreateDetailsLabel(
+        ActivityDetails,
+        "DIRECT CHILDREN (" ..
+        tostring(#Children) ..
+        ")"
+    )
+
+    if #Children == 0 then
+
+        CreateDetailsLabel(
+            ActivityDetails,
+            "None"
+        )
+
+    else
+
+        for _, Child in ipairs(Children) do
+
+            local Text =
+                Child.Name ..
+                " [" ..
+                Child.ClassName ..
+                "]"
+
+            if IsValueObject(Child) then
+
+                Text = Text ..
+                    " = " ..
+                    tostring(ReadValue(Child))
+
+            end
+
+            CreateDetailsLabel(
+                ActivityDetails,
+                Text
+            )
+
+        end
+
+    end
+
+    --==================================================
+    -- VALUE OBJECTS
+    --==================================================
+
+    local Values = {}
+
+    local function FindValues(Parent)
+
+        for _, Child in ipairs(Parent:GetChildren()) do
+
+            if IsValueObject(Child) then
+
+                table.insert(
+                    Values,
+                    {
+                        Name = Child.Name,
+                        Class = Child.ClassName,
+                        Path = GetPathSafe(Child),
+                        Value = tostring(ReadValue(Child))
+                    }
+                )
+
+            end
+
+            FindValues(Child)
+
+        end
+
+    end
+
+    pcall(function()
+        FindValues(Object)
+    end)
+
+    CreateDetailsLabel(
+        ActivityDetails,
+        ""
+    )
+
+    CreateDetailsLabel(
+        ActivityDetails,
+        "VALUE OBJECTS (" ..
+        tostring(#Values) ..
+        ")"
+    )
+
+    if #Values == 0 then
+
+        CreateDetailsLabel(
+            ActivityDetails,
+            "None"
+        )
+
+    else
+
+        for _, Value in ipairs(Values) do
+
+            CreateDetailsLabel(
+                ActivityDetails,
+
+                Value.Name ..
+                " [" ..
+                Value.Class ..
+                "]\n" ..
+                "Value: " ..
+                Value.Value ..
+                "\nPath: " ..
+                Value.Path
+
+            )
+
+        end
+
+    end
+
+    --==================================================
+    -- ALL DESCENDANTS
+    --==================================================
+
+    local Descendants = {}
+
+    pcall(function()
+
+        CollectDescendants(
+            Object,
+            Descendants,
+            0
+        )
+
+    end)
+
+    CreateDetailsLabel(
+        ActivityDetails,
+        ""
+    )
+
+    CreateDetailsLabel(
+        ActivityDetails,
+        "ALL DESCENDANTS (" ..
+        tostring(#Descendants) ..
+        ")"
+    )
+
+    if #Descendants == 0 then
+
+        CreateDetailsLabel(
+            ActivityDetails,
+            "None"
+        )
+
+    else
+
+        for _, Descendant in ipairs(Descendants) do
+
+            local Prefix = string.rep(
+                "  ",
+                Descendant.Depth
+            )
+
+            local Text =
+                Prefix ..
+                Descendant.Name ..
+                " [" ..
+                Descendant.Class ..
+                "]"
+
+            if Descendant.Value ~= nil then
+
+                Text = Text ..
+                    " = " ..
+                    Descendant.Value
+
+            end
+
+            CreateDetailsLabel(
+                ActivityDetails,
+                Text
+            )
+
+        end
 
     end
 
@@ -467,6 +1017,7 @@ local function ShowMovementDetails(Log)
         )
 
         return
+
     end
 
     CreateDetailsLabel(
@@ -476,27 +1027,31 @@ local function ShowMovementDetails(Log)
 
     CreateDetailsLabel(
         MovementDetails,
-        "State: " .. tostring(Log.State)
+        "State: " .. Log.State
     )
 
     CreateDetailsLabel(
         MovementDetails,
-        "Time: " .. tostring(Log.Time)
+        "Time: " .. Log.Time
     )
 
-    if Log.Humanoid then
+    CreateDetailsLabel(
+        MovementDetails,
+        "Humanoid: " .. Log.Humanoid
+    )
 
-        CreateDetailsLabel(
-            MovementDetails,
-            "Humanoid: " .. tostring(Log.Humanoid)
-        )
-
-    end
+    CreateDetailsLabel(
+        MovementDetails,
+        "Character: " ..
+        (LocalPlayer.Character and
+            GetPathSafe(LocalPlayer.Character)
+            or "nil")
+    )
 
 end
 
 --==================================================
--- ACTIVITY REFRESH
+-- REFRESH ACTIVITY
 --==================================================
 
 local function RefreshActivity()
@@ -511,20 +1066,33 @@ local function RefreshActivity()
         Button.Size = UDim2.new(1, -5, 0, 55)
         Button.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
         Button.BorderSizePixel = 0
+
         Button.Text =
-            "[" .. Log.Time .. "] " ..
+            "[" ..
+            Log.Time ..
+            "] " ..
             Log.EventType ..
             "\n" ..
             Log.Name
-        Button.TextColor3 = Color3.fromRGB(225, 225, 225)
+
+        Button.TextColor3 =
+            Color3.fromRGB(225, 225, 225)
+
         Button.TextSize = 12
         Button.Font = Enum.Font.Code
-        Button.TextXAlignment = Enum.TextXAlignment.Left
-        Button.TextYAlignment = Enum.TextYAlignment.Center
+
+        Button.TextXAlignment =
+            Enum.TextXAlignment.Left
+
+        Button.TextYAlignment =
+            Enum.TextYAlignment.Center
+
         Button.TextWrapped = true
+
         Button.Parent = ActivityList
 
-        Instance.new("UICorner", Button).CornerRadius = UDim.new(0, 5)
+        Instance.new("UICorner", Button)
+            .CornerRadius = UDim.new(0, 5)
 
         local Padding = Instance.new("UIPadding")
         Padding.PaddingLeft = UDim.new(0, 8)
@@ -534,6 +1102,7 @@ local function RefreshActivity()
         Button.MouseButton1Click:Connect(function()
 
             SelectedActivity = Log
+
             ShowActivityDetails(Log)
 
         end)
@@ -543,7 +1112,7 @@ local function RefreshActivity()
 end
 
 --==================================================
--- MOVEMENT REFRESH
+-- REFRESH MOVEMENT
 --==================================================
 
 local function RefreshMovement()
@@ -556,18 +1125,29 @@ local function RefreshMovement()
 
         Button.LayoutOrder = Index
         Button.Size = UDim2.new(1, -5, 0, 35)
-        Button.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
+        Button.BackgroundColor3 =
+            Color3.fromRGB(32, 32, 32)
+
         Button.BorderSizePixel = 0
+
         Button.Text =
-            "[" .. Log.Time .. "] " ..
+            "[" ..
+            Log.Time ..
+            "] " ..
             Log.State
-        Button.TextColor3 = Color3.fromRGB(225, 225, 225)
+
+        Button.TextColor3 =
+            Color3.fromRGB(225, 225, 225)
+
         Button.TextSize = 12
         Button.Font = Enum.Font.Code
-        Button.TextXAlignment = Enum.TextXAlignment.Left
+        Button.TextXAlignment =
+            Enum.TextXAlignment.Left
+
         Button.Parent = MovementList
 
-        Instance.new("UICorner", Button).CornerRadius = UDim.new(0, 5)
+        Instance.new("UICorner", Button)
+            .CornerRadius = UDim.new(0, 5)
 
         local Padding = Instance.new("UIPadding")
         Padding.PaddingLeft = UDim.new(0, 8)
@@ -576,6 +1156,7 @@ local function RefreshMovement()
         Button.MouseButton1Click:Connect(function()
 
             SelectedMovement = Log
+
             ShowMovementDetails(Log)
 
         end)
@@ -588,7 +1169,11 @@ end
 -- ACTIVITY LOGGER
 --==================================================
 
-local function LogActivity(EventType, Object, Details)
+local function LogActivity(
+    EventType,
+    Object,
+    Details
+)
 
     if not ActivityEnabled then
         return
@@ -598,21 +1183,45 @@ local function LogActivity(EventType, Object, Details)
         return
     end
 
-    local Time = os.date("%H:%M:%S")
-
     local Log = {
+
         EventType = EventType,
-        Time = Time,
-        Name = Object and Object.Name or "nil",
-        Class = Object and Object.ClassName or "nil",
-        Path = Object and GetPath(Object) or "nil",
-        Details = Details or ""
+
+        Time = os.date("%H:%M:%S"),
+
+        Name =
+            Object and
+            Object.Name or
+            "nil",
+
+        Class =
+            Object and
+            Object.ClassName or
+            "nil",
+
+        Path =
+            Object and
+            GetPathSafe(Object) or
+            "nil",
+
+        Details = Details or "",
+
+        Object = Object
+
     }
 
-    table.insert(ActivityLogs, 1, Log)
+    table.insert(
+        ActivityLogs,
+        1,
+        Log
+    )
 
     if #ActivityLogs > MAX_LOGS then
-        table.remove(ActivityLogs)
+
+        table.remove(
+            ActivityLogs
+        )
+
     end
 
     RefreshActivity()
@@ -623,7 +1232,10 @@ end
 -- MOVEMENT LOGGER
 --==================================================
 
-local function LogMovement(State, Humanoid)
+local function LogMovement(
+    State,
+    Humanoid
+)
 
     if not MovementEnabled then
         return
@@ -636,15 +1248,30 @@ local function LogMovement(State, Humanoid)
     LastMovement = State
 
     local Log = {
+
         State = State,
+
         Time = os.date("%H:%M:%S"),
-        Humanoid = Humanoid and Humanoid.Name or "nil"
+
+        Humanoid =
+            Humanoid and
+            Humanoid.Name or
+            "nil"
+
     }
 
-    table.insert(MovementLogs, 1, Log)
+    table.insert(
+        MovementLogs,
+        1,
+        Log
+    )
 
     if #MovementLogs > MAX_LOGS then
-        table.remove(MovementLogs)
+
+        table.remove(
+            MovementLogs
+        )
+
     end
 
     RefreshMovement()
@@ -709,18 +1336,25 @@ local function MonitorPrompt(Prompt)
             return
         end
 
-        local Details = "Interaction: ProximityPrompt"
+        local Details =
+            "Interaction: ProximityPrompt"
 
         if Prompt.ActionText ~= "" then
-            Details = Details ..
+
+            Details =
+                Details ..
                 "\nActionText: " ..
                 Prompt.ActionText
+
         end
 
         if Prompt.ObjectText ~= "" then
-            Details = Details ..
+
+            Details =
+                Details ..
                 "\nObjectText: " ..
                 Prompt.ObjectText
+
         end
 
         LogActivity(
@@ -754,7 +1388,7 @@ local function MonitorTool(Tool)
         LogActivity(
             "TOOL ACTIVATED",
             Tool,
-            "Tool.Activated"
+            "Interaction: Tool.Activated"
         )
 
     end)
@@ -762,7 +1396,7 @@ local function MonitorTool(Tool)
 end
 
 --==================================================
--- GAME GUI BUTTON
+-- GUI BUTTON
 --==================================================
 
 local function MonitorGuiButton(Button)
@@ -786,7 +1420,7 @@ local function MonitorGuiButton(Button)
         LogActivity(
             "GUI INTERACTION",
             Button,
-            "GuiButton.Activated"
+            "Interaction: GuiButton.Activated"
         )
 
     end)
@@ -794,25 +1428,33 @@ local function MonitorGuiButton(Button)
 end
 
 --==================================================
--- INITIAL SCANS
+-- INITIAL SCAN
 --==================================================
 
-for _, Object in ipairs(Workspace:GetDescendants()) do
+for _, Object in ipairs(
+    Workspace:GetDescendants()
+) do
 
     if Object:IsA("ClickDetector") then
+
         MonitorClickDetector(Object)
 
     elseif Object:IsA("ProximityPrompt") then
+
         MonitorPrompt(Object)
 
     end
 
 end
 
-for _, Object in ipairs(PlayerGui:GetDescendants()) do
+for _, Object in ipairs(
+    PlayerGui:GetDescendants()
+) do
 
     if Object:IsA("GuiButton") then
+
         MonitorGuiButton(Object)
+
     end
 
 end
@@ -824,10 +1466,13 @@ end
 Workspace.DescendantAdded:Connect(function(Object)
 
     if Object:IsA("ClickDetector") then
+
         MonitorClickDetector(Object)
 
     elseif Object:IsA("ProximityPrompt") then
+
         MonitorPrompt(Object)
+
     end
 
 end)
@@ -835,7 +1480,9 @@ end)
 PlayerGui.DescendantAdded:Connect(function(Object)
 
     if Object:IsA("GuiButton") then
+
         MonitorGuiButton(Object)
+
     end
 
 end)
@@ -846,59 +1493,82 @@ end)
 
 local function ScanTools()
 
-    local Backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+    local Backpack =
+        LocalPlayer:FindFirstChildOfClass(
+            "Backpack"
+        )
 
     if Backpack then
 
-        for _, Tool in ipairs(Backpack:GetChildren()) do
+        for _, Tool in ipairs(
+            Backpack:GetChildren()
+        ) do
+
             MonitorTool(Tool)
+
         end
 
     end
 
-    local Character = LocalPlayer.Character
+    local Character =
+        LocalPlayer.Character
 
     if Character then
 
-        for _, Tool in ipairs(Character:GetChildren()) do
+        for _, Tool in ipairs(
+            Character:GetChildren()
+        ) do
+
             MonitorTool(Tool)
+
         end
 
     end
 
 end
 
-local function MonitorToolContainer(Container)
+local function MonitorToolContainer(
+    Container
+)
 
     if not Container then
         return
     end
 
-    Container.ChildAdded:Connect(function(Object)
+    Container.ChildAdded:Connect(
+        function(Object)
 
-        if Object:IsA("Tool") then
-            MonitorTool(Object)
+            if Object:IsA("Tool") then
+
+                MonitorTool(Object)
+
+            end
+
         end
-
-    end)
+    )
 
 end
 
-local Backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+local Backpack =
+    LocalPlayer:FindFirstChildOfClass(
+        "Backpack"
+    )
 
 if Backpack then
     MonitorToolContainer(Backpack)
 end
 
-LocalPlayer.CharacterAdded:Connect(function(Character)
+LocalPlayer.CharacterAdded:Connect(
+    function(Character)
 
-    MonitorToolContainer(Character)
+        MonitorToolContainer(Character)
 
-    task.wait(0.2)
+        task.wait(0.2)
 
-    ScanTools()
+        ScanTools()
 
-end)
+    end
+)
 
 ScanTools()
 
@@ -908,214 +1578,326 @@ ScanTools()
 
 local function SetupMovement(Character)
 
-    local Humanoid = Character:WaitForChild("Humanoid")
+    local Humanoid =
+        Character:WaitForChild("Humanoid")
 
-    Humanoid.StateChanged:Connect(function(_, NewState)
+    Humanoid.StateChanged:Connect(
+        function(_, NewState)
 
-        if NewState == Enum.HumanoidStateType.Jumping then
+            if NewState ==
+                Enum.HumanoidStateType.Jumping then
 
-            LogMovement("JUMPING", Humanoid)
+                LogMovement(
+                    "JUMPING",
+                    Humanoid
+                )
 
-        elseif NewState == Enum.HumanoidStateType.Freefall then
+            elseif NewState ==
+                Enum.HumanoidStateType.Freefall then
 
-            LogMovement("FALLING", Humanoid)
+                LogMovement(
+                    "FALLING",
+                    Humanoid
+                )
 
-        elseif NewState == Enum.HumanoidStateType.Landed then
+            elseif NewState ==
+                Enum.HumanoidStateType.Landed then
 
-            LogMovement("LANDED", Humanoid)
+                LogMovement(
+                    "LANDED",
+                    Humanoid
+                )
 
-        elseif NewState == Enum.HumanoidStateType.Climbing then
+            elseif NewState ==
+                Enum.HumanoidStateType.Climbing then
 
-            LogMovement("CLIMBING", Humanoid)
+                LogMovement(
+                    "CLIMBING",
+                    Humanoid
+                )
 
-        elseif NewState == Enum.HumanoidStateType.Swimming then
+            elseif NewState ==
+                Enum.HumanoidStateType.Swimming then
 
-            LogMovement("SWIMMING", Humanoid)
+                LogMovement(
+                    "SWIMMING",
+                    Humanoid
+                )
 
-        elseif NewState == Enum.HumanoidStateType.Seated then
+            elseif NewState ==
+                Enum.HumanoidStateType.Seated then
 
-            LogMovement("SEATED", Humanoid)
+                LogMovement(
+                    "SEATED",
+                    Humanoid
+                )
 
-        elseif NewState == Enum.HumanoidStateType.Running then
+            elseif NewState ==
+                Enum.HumanoidStateType.Running then
 
-            LogMovement("RUNNING", Humanoid)
+                LogMovement(
+                    "RUNNING",
+                    Humanoid
+                )
 
-        elseif NewState == Enum.HumanoidStateType.RunningNoPhysics then
+            elseif NewState ==
+                Enum.HumanoidStateType.RunningNoPhysics then
 
-            LogMovement("RUNNING", Humanoid)
+                LogMovement(
+                    "RUNNING",
+                    Humanoid
+                )
+
+            end
 
         end
-
-    end)
+    )
 
 end
 
 if LocalPlayer.Character then
-    SetupMovement(LocalPlayer.Character)
+
+    SetupMovement(
+        LocalPlayer.Character
+    )
+
 end
 
-LocalPlayer.CharacterAdded:Connect(function(Character)
+LocalPlayer.CharacterAdded:Connect(
+    function(Character)
 
-    SetupMovement(Character)
-    LastMovement = nil
+        LastMovement = nil
 
-end)
-
---==================================================
--- TOGGLE BUTTONS
---==================================================
-
-ActivityToggle.MouseButton1Click:Connect(function()
-
-    ActivityEnabled = not ActivityEnabled
-
-    if ActivityEnabled then
-
-        ActivityToggle.Text = "ACTIVITY: ON"
-        ActivityToggle.BackgroundColor3 =
-            Color3.fromRGB(40, 120, 60)
-
-    else
-
-        ActivityToggle.Text = "ACTIVITY: OFF"
-        ActivityToggle.BackgroundColor3 =
-            Color3.fromRGB(120, 40, 40)
+        SetupMovement(Character)
 
     end
+)
 
-end)
+--==================================================
+-- TOGGLES
+--==================================================
 
-MovementToggle.MouseButton1Click:Connect(function()
+ActivityToggle.MouseButton1Click:Connect(
+    function()
 
-    MovementEnabled = not MovementEnabled
+        ActivityEnabled =
+            not ActivityEnabled
 
-    if MovementEnabled then
+        if ActivityEnabled then
 
-        MovementToggle.Text = "MOVEMENT: ON"
-        MovementToggle.BackgroundColor3 =
-            Color3.fromRGB(40, 120, 60)
+            ActivityToggle.Text =
+                "ACTIVITY: ON"
 
-    else
+            ActivityToggle.BackgroundColor3 =
+                Color3.fromRGB(40, 120, 60)
 
-        MovementToggle.Text = "MOVEMENT: OFF"
-        MovementToggle.BackgroundColor3 =
-            Color3.fromRGB(120, 40, 40)
+        else
+
+            ActivityToggle.Text =
+                "ACTIVITY: OFF"
+
+            ActivityToggle.BackgroundColor3 =
+                Color3.fromRGB(120, 40, 40)
+
+        end
 
     end
+)
 
-end)
+MovementToggle.MouseButton1Click:Connect(
+    function()
+
+        MovementEnabled =
+            not MovementEnabled
+
+        if MovementEnabled then
+
+            MovementToggle.Text =
+                "MOVEMENT: ON"
+
+            MovementToggle.BackgroundColor3 =
+                Color3.fromRGB(40, 120, 60)
+
+        else
+
+            MovementToggle.Text =
+                "MOVEMENT: OFF"
+
+            MovementToggle.BackgroundColor3 =
+                Color3.fromRGB(120, 40, 40)
+
+        end
+
+    end
+)
 
 --==================================================
 -- CLEAR
 --==================================================
 
-ActivityClear.MouseButton1Click:Connect(function()
+ActivityClear.MouseButton1Click:Connect(
+    function()
 
-    table.clear(ActivityLogs)
-    SelectedActivity = nil
+        table.clear(ActivityLogs)
 
-    RefreshActivity()
-    ShowActivityDetails(nil)
+        SelectedActivity = nil
 
-end)
+        RefreshActivity()
+        ShowActivityDetails(nil)
 
-MovementClear.MouseButton1Click:Connect(function()
-
-    table.clear(MovementLogs)
-    SelectedMovement = nil
-    LastMovement = nil
-
-    RefreshMovement()
-    ShowMovementDetails(nil)
-
-end)
-
---==================================================
--- COPY
---==================================================
-
-ActivityCopy.MouseButton1Click:Connect(function()
-
-    if not setclipboard then
-        return
     end
+)
 
-    local Output = {}
+MovementClear.MouseButton1Click:Connect(
+    function()
 
-    for _, Log in ipairs(ActivityLogs) do
+        table.clear(MovementLogs)
 
-        table.insert(
-            Output,
-            "[" .. Log.Time .. "] " ..
-            Log.EventType ..
-            "\nName: " .. Log.Name ..
-            "\nClass: " .. Log.Class ..
-            "\nPath: " .. Log.Path ..
-            (Log.Details ~= "" and
-                "\nDetails: " .. Log.Details or "")
+        SelectedMovement = nil
+        LastMovement = nil
+
+        RefreshMovement()
+        ShowMovementDetails(nil)
+
+    end
+)
+
+--==================================================
+-- COPY ACTIVITY
+--==================================================
+
+ActivityCopy.MouseButton1Click:Connect(
+    function()
+
+        if not setclipboard then
+            return
+        end
+
+        local Output = {}
+
+        for _, Log in ipairs(ActivityLogs) do
+
+            table.insert(
+                Output,
+
+                "[" ..
+                Log.Time ..
+                "] " ..
+                Log.EventType ..
+
+                "\nName: " ..
+                Log.Name ..
+
+                "\nClass: " ..
+                Log.Class ..
+
+                "\nPath: " ..
+                Log.Path ..
+
+                (
+                    Log.Details ~= ""
+                    and
+                    "\nDetails: " ..
+                    Log.Details
+                    or
+                    ""
+                )
+
+            )
+
+        end
+
+        setclipboard(
+            table.concat(
+                Output,
+                "\n\n"
+            )
         )
 
     end
+)
 
-    setclipboard(table.concat(Output, "\n\n"))
+--==================================================
+-- COPY MOVEMENT
+--==================================================
 
-end)
+MovementCopy.MouseButton1Click:Connect(
+    function()
 
-MovementCopy.MouseButton1Click:Connect(function()
+        if not setclipboard then
+            return
+        end
 
-    if not setclipboard then
-        return
-    end
+        local Output = {}
 
-    local Output = {}
+        for _, Log in ipairs(
+            MovementLogs
+        ) do
 
-    for _, Log in ipairs(MovementLogs) do
+            table.insert(
+                Output,
 
-        table.insert(
-            Output,
-            "[" .. Log.Time .. "] MOVEMENT: " ..
-            Log.State
+                "[" ..
+                Log.Time ..
+                "] MOVEMENT: " ..
+                Log.State
+
+            )
+
+        end
+
+        setclipboard(
+            table.concat(
+                Output,
+                "\n\n"
+            )
         )
 
     end
-
-    setclipboard(table.concat(Output, "\n\n"))
-
-end)
+)
 
 --==================================================
--- TAB SWITCHING
+-- TABS
 --==================================================
 
-ActivityTab.MouseButton1Click:Connect(function()
+ActivityTab.MouseButton1Click:Connect(
+    function()
 
-    ActivityPage.Visible = true
-    MovementPage.Visible = false
+        ActivityPage.Visible = true
+        MovementPage.Visible = false
 
-end)
+    end
+)
 
-MovementTab.MouseButton1Click:Connect(function()
+MovementTab.MouseButton1Click:Connect(
+    function()
 
-    ActivityPage.Visible = false
-    MovementPage.Visible = true
+        ActivityPage.Visible = false
+        MovementPage.Visible = true
 
-end)
+    end
+)
 
 --==================================================
 -- VISIBILITY
 --==================================================
 
-YButton.MouseButton1Click:Connect(function()
+YButton.MouseButton1Click:Connect(
+    function()
 
-    Dashboard.Visible = not Dashboard.Visible
+        Dashboard.Visible =
+            not Dashboard.Visible
 
-end)
+    end
+)
 
-CloseButton.MouseButton1Click:Connect(function()
+CloseButton.MouseButton1Click:Connect(
+    function()
 
-    Dashboard.Visible = false
+        Dashboard.Visible = false
 
-end)
+    end
+)
 
 --==================================================
 -- LOCK
@@ -1123,80 +1905,117 @@ end)
 
 local Locked = false
 
-LockButton.MouseButton1Click:Connect(function()
+LockButton.MouseButton1Click:Connect(
+    function()
 
-    Locked = not Locked
+        Locked = not Locked
 
-    if Locked then
-        LockButton.Text = "🔒"
-    else
-        LockButton.Text = "🔓"
+        if Locked then
+            LockButton.Text = "🔒"
+        else
+            LockButton.Text = "🔓"
+        end
+
     end
-
-end)
+)
 
 --==================================================
 -- DRAGGING
 --==================================================
 
-local function MakeDraggable(Object, RespectLock)
+local function MakeDraggable(
+    Object,
+    RespectLock
+)
 
     local Dragging = false
     local DragStart
     local StartPosition
 
-    Object.InputBegan:Connect(function(Input)
+    Object.InputBegan:Connect(
+        function(Input)
 
-        if RespectLock and Locked then
-            return
+            if RespectLock and Locked then
+                return
+            end
+
+            if Input.UserInputType ==
+                Enum.UserInputType.MouseButton1
+            or Input.UserInputType ==
+                Enum.UserInputType.Touch then
+
+                Dragging = true
+
+                DragStart =
+                    Input.Position
+
+                StartPosition =
+                    Object.Position
+
+                Input.Changed:Connect(
+                    function()
+
+                        if Input.UserInputState ==
+                            Enum.UserInputState.End then
+
+                            Dragging = false
+
+                        end
+
+                    end
+                )
+
+            end
+
         end
+    )
 
-        if Input.UserInputType == Enum.UserInputType.MouseButton1
-        or Input.UserInputType == Enum.UserInputType.Touch then
+    UserInputService.InputChanged:Connect(
+        function(Input)
 
-            Dragging = true
-            DragStart = Input.Position
-            StartPosition = Object.Position
+            if not Dragging then
+                return
+            end
 
-            Input.Changed:Connect(function()
+            if Input.UserInputType ~=
+                Enum.UserInputType.MouseMovement
+            and Input.UserInputType ~=
+                Enum.UserInputType.Touch then
 
-                if Input.UserInputState == Enum.UserInputState.End then
-                    Dragging = false
-                end
+                return
 
-            end)
+            end
+
+            local Delta =
+                Input.Position -
+                DragStart
+
+            Object.Position = UDim2.new(
+
+                StartPosition.X.Scale,
+                StartPosition.X.Offset +
+                    Delta.X,
+
+                StartPosition.Y.Scale,
+                StartPosition.Y.Offset +
+                    Delta.Y
+
+            )
 
         end
-
-    end)
-
-    UserInputService.InputChanged:Connect(function(Input)
-
-        if not Dragging then
-            return
-        end
-
-        if Input.UserInputType ~= Enum.UserInputType.MouseMovement
-        and Input.UserInputType ~= Enum.UserInputType.Touch then
-            return
-        end
-
-        local Delta = Input.Position - DragStart
-
-        Object.Position = UDim2.new(
-            StartPosition.X.Scale,
-            StartPosition.X.Offset + Delta.X,
-
-            StartPosition.Y.Scale,
-            StartPosition.Y.Offset + Delta.Y
-        )
-
-    end)
+    )
 
 end
 
-MakeDraggable(TitleBar, true)
-MakeDraggable(YButton, false)
+MakeDraggable(
+    TitleBar,
+    true
+)
+
+MakeDraggable(
+    YButton,
+    false
+)
 
 --==================================================
 -- INITIAL DETAILS
