@@ -1,14 +1,12 @@
---// Y Dashboard
---// Instant Interact + Custom Walk Speed
+--// Y Dashboard - UI Only
 
 local Players = game:GetService("Players")
-local ProximityPromptService = game:GetService("ProximityPromptService")
 local UserInputService = game:GetService("UserInputService")
 
 local LocalPlayer = Players.LocalPlayer
 
 --==================================================
--- GUI
+-- SCREEN GUI
 --==================================================
 
 local ScreenGui = Instance.new("ScreenGui")
@@ -74,6 +72,7 @@ DashboardCorner.Parent = Dashboard
 --==================================================
 
 local Title = Instance.new("TextLabel")
+Title.Name = "Title"
 Title.Size = UDim2.new(1, 0, 0, 50)
 Title.BackgroundTransparency = 1
 Title.Text = "Y Dashboard"
@@ -87,6 +86,7 @@ Title.Parent = Dashboard
 --==================================================
 
 local CharacterTab = Instance.new("TextButton")
+CharacterTab.Name = "CharacterTab"
 CharacterTab.Size = UDim2.new(0, 140, 0, 40)
 CharacterTab.Position = UDim2.new(0, 15, 0, 60)
 CharacterTab.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
@@ -104,7 +104,10 @@ CharacterCorner.Parent = CharacterTab
 -- INSTANT INTERACT
 --==================================================
 
+local ProximityPromptService = game:GetService("ProximityPromptService")
+
 local InstantInteractButton = Instance.new("TextButton")
+InstantInteractButton.Name = "InstantInteract"
 InstantInteractButton.Size = UDim2.new(0, 250, 0, 45)
 InstantInteractButton.Position = UDim2.new(0, 20, 0, 120)
 InstantInteractButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
@@ -114,18 +117,16 @@ InstantInteractButton.Font = Enum.Font.Gotham
 InstantInteractButton.Text = "Instant Interact: ON"
 InstantInteractButton.Parent = Dashboard
 
-local InstantCorner = Instance.new("UICorner")
-InstantCorner.CornerRadius = UDim.new(0, 8)
-InstantCorner.Parent = InstantInteractButton
+local Corner = Instance.new("UICorner")
+Corner.CornerRadius = UDim.new(0, 8)
+Corner.Parent = InstantInteractButton
 
-local InstantInteractEnabled = true
+local InstantInteract = true
 
 local function UpdatePrompts()
 	for _, object in ipairs(workspace:GetDescendants()) do
 		if object:IsA("ProximityPrompt") then
-			if InstantInteractEnabled then
-				object.HoldDuration = 0
-			end
+			object.HoldDuration = InstantInteract and 0 or object.HoldDuration
 		end
 	end
 end
@@ -133,121 +134,38 @@ end
 UpdatePrompts()
 
 ProximityPromptService.PromptShown:Connect(function(prompt)
-	if InstantInteractEnabled then
+	if InstantInteract then
 		prompt.HoldDuration = 0
 	end
 end)
 
 InstantInteractButton.MouseButton1Click:Connect(function()
-	InstantInteractEnabled = not InstantInteractEnabled
+	InstantInteract = not InstantInteract
 
-	if InstantInteractEnabled then
-		InstantInteractButton.Text = "Instant Interact: ON"
+	InstantInteractButton.Text =
+		"Instant Interact: " .. (InstantInteract and "ON" or "OFF")
+
+	if InstantInteract then
 		UpdatePrompts()
-	else
-		InstantInteractButton.Text = "Instant Interact: OFF"
 	end
 end)
-
 --==================================================
--- WALK SPEED
+-- DRAG Y BUTTON
 --==================================================
 
-local WalkSpeedLabel = Instance.new("TextLabel")
-WalkSpeedLabel.Size = UDim2.new(0, 250, 0, 25)
-WalkSpeedLabel.Position = UDim2.new(0, 20, 0, 180)
-WalkSpeedLabel.BackgroundTransparency = 1
-WalkSpeedLabel.Text = "Walk Speed"
-WalkSpeedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-WalkSpeedLabel.TextSize = 14
-WalkSpeedLabel.Font = Enum.Font.Gotham
-WalkSpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
-WalkSpeedLabel.Parent = Dashboard
-
-local WalkSpeedBox = Instance.new("TextBox")
-WalkSpeedBox.Size = UDim2.new(0, 250, 0, 40)
-WalkSpeedBox.Position = UDim2.new(0, 20, 0, 210)
-WalkSpeedBox.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-WalkSpeedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-WalkSpeedBox.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
-WalkSpeedBox.TextSize = 15
-WalkSpeedBox.Font = Enum.Font.Gotham
-WalkSpeedBox.Text = "16"
-WalkSpeedBox.PlaceholderText = "Enter Walk Speed"
-WalkSpeedBox.ClearTextOnFocus = false
-WalkSpeedBox.Parent = Dashboard
-
-local WalkSpeedCorner = Instance.new("UICorner")
-WalkSpeedCorner.CornerRadius = UDim.new(0, 8)
-WalkSpeedCorner.Parent = WalkSpeedBox
-
-local function SetWalkSpeed()
-	local Character = LocalPlayer.Character
-	if not Character then
-		return
-	end
-
-	local Humanoid = Character:FindFirstChildOfClass("Humanoid")
-	if not Humanoid then
-		return
-	end
-
-	local Speed = tonumber(WalkSpeedBox.Text)
-
-	if Speed and Speed >= 0 then
-		Humanoid.WalkSpeed = Speed
-	else
-		WalkSpeedBox.Text = tostring(Humanoid.WalkSpeed)
-	end
-end
-
-WalkSpeedBox.FocusLost:Connect(function()
-	SetWalkSpeed()
-end)
-
-LocalPlayer.CharacterAdded:Connect(function(Character)
-	local Humanoid = Character:WaitForChild("Humanoid")
-
-	task.wait()
-
-	local Speed = tonumber(WalkSpeedBox.Text)
-
-	if Speed and Speed >= 0 then
-		Humanoid.WalkSpeed = Speed
-	end
-end)
-
---==================================================
--- Y BUTTON TOGGLE
---==================================================
+local Locked = false
+local DraggingY = false
+local DragStartY
+local StartPosY
 
 YButton.MouseButton1Click:Connect(function()
 	Dashboard.Visible = not Dashboard.Visible
 end)
 
---==================================================
--- LOCK
---==================================================
-
-local Locked = false
-
 LockButton.MouseButton1Click:Connect(function()
 	Locked = not Locked
-
-	if Locked then
-		LockButton.Text = "🔒"
-	else
-		LockButton.Text = "🔓"
-	end
+	LockButton.Text = Locked and "🔒" or "🔓"
 end)
-
---==================================================
--- DRAG Y BUTTON
---==================================================
-
-local DraggingY = false
-local DragStartY
-local StartPosY
 
 YButton.InputBegan:Connect(function(input)
 	if Locked then
