@@ -3,6 +3,7 @@
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ProximityPromptService = game:GetService("ProximityPromptService")
+local CollectionService = game:GetService("CollectionService")
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -121,6 +122,25 @@ DataCorner.CornerRadius = UDim.new(0, 8)
 DataCorner.Parent = DataTab
 
 --==================================================
+-- PETS TAB
+--==================================================
+
+local PetsTab = Instance.new("TextButton")
+PetsTab.Name = "PetsTab"
+PetsTab.Size = UDim2.new(0, 140, 0, 40)
+PetsTab.Position = UDim2.new(0, 315, 0, 60)
+PetsTab.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+PetsTab.Text = "PETS"
+PetsTab.TextColor3 = Color3.fromRGB(255, 255, 255)
+PetsTab.TextSize = 14
+PetsTab.Font = Enum.Font.GothamBold
+PetsTab.Parent = Dashboard
+
+local PetsCorner = Instance.new("UICorner")
+PetsCorner.CornerRadius = UDim.new(0, 8)
+PetsCorner.Parent = PetsTab
+
+--==================================================
 -- INSTANT INTERACT
 --==================================================
 
@@ -158,6 +178,7 @@ ProximityPromptService.PromptShown:Connect(function(prompt)
 end)
 
 InstantInteractButton.MouseButton1Click:Connect(function()
+
 	InstantInteract = not InstantInteract
 
 	InstantInteractButton.Text =
@@ -166,6 +187,7 @@ InstantInteractButton.MouseButton1Click:Connect(function()
 	if InstantInteract then
 		UpdatePrompts()
 	end
+
 end)
 
 --==================================================
@@ -253,18 +275,22 @@ RefreshCorner.Parent = RefreshEggs
 --==================================================
 
 local function IsEggObject(object)
+
 	local name = string.lower(object.Name)
 
 	return name:find("egg", 1, true) ~= nil
 		or name:find("pet", 1, true) ~= nil
+
 end
 
 local function ClearEggList()
+
 	for _, child in ipairs(EggList:GetChildren()) do
 		if child:IsA("TextLabel") then
 			child:Destroy()
 		end
 	end
+
 end
 
 local function ScanEggs()
@@ -281,6 +307,7 @@ local function ScanEggs()
 			local name = object.Name
 
 			if not Seen[name] then
+
 				Seen[name] = true
 
 				table.insert(Eggs, {
@@ -288,6 +315,7 @@ local function ScanEggs()
 					Class = object.ClassName,
 					Path = object:GetFullName()
 				})
+
 			end
 		end
 	end
@@ -327,6 +355,7 @@ local function ScanEggs()
 			local RowCorner = Instance.new("UICorner")
 			RowCorner.CornerRadius = UDim.new(0, 5)
 			RowCorner.Parent = Row
+
 		end
 	end
 
@@ -347,6 +376,7 @@ local function ScanEggs()
 
 	print("Total unique eggs:", #Eggs)
 	print("================================")
+
 end
 
 RefreshEggs.MouseButton1Click:Connect(ScanEggs)
@@ -377,9 +407,11 @@ local function GetPath(root, path)
 		if not object then
 			return nil
 		end
+
 	end
 
 	return object
+
 end
 
 local function InspectData()
@@ -413,9 +445,11 @@ local function InspectData()
 		if next(attributes) == nil then
 			print("(none)")
 		else
+
 			for name, value in pairs(attributes) do
 				print("@" .. name .. " =", value)
 			end
+
 		end
 
 		print("-- Children --")
@@ -423,7 +457,9 @@ local function InspectData()
 		local children = object:GetChildren()
 
 		if #children == 0 then
+
 			print("(no children)")
+
 		else
 
 			for i, child in ipairs(children) do
@@ -444,6 +480,7 @@ local function InspectData()
 				if child:IsA("ValueBase") then
 					print("    VALUE =", child.Value)
 				end
+
 			end
 		end
 	end
@@ -452,6 +489,7 @@ local function InspectData()
 	print("========================================")
 	print("       DATA SCAN COMPLETE")
 	print("========================================")
+
 end
 
 local InspectButton = Instance.new("TextButton")
@@ -495,28 +533,258 @@ TerminateButton.MouseButton1Click:Connect(function()
 end)
 
 --==================================================
+-- PETS PAGE
+--==================================================
+
+local PetsPage = Instance.new("Frame")
+PetsPage.Name = "PetsPage"
+PetsPage.Size = UDim2.new(1, -30, 1, -115)
+PetsPage.Position = UDim2.new(0, 15, 0, 110)
+PetsPage.BackgroundTransparency = 1
+PetsPage.Visible = false
+PetsPage.Parent = Dashboard
+
+local PetsTitle = Instance.new("TextLabel")
+PetsTitle.Size = UDim2.new(1, -20, 0, 35)
+PetsTitle.Position = UDim2.new(0, 10, 0, 5)
+PetsTitle.BackgroundTransparency = 1
+PetsTitle.Text = "🐾 AVAILABLE PETS"
+PetsTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+PetsTitle.TextSize = 17
+PetsTitle.Font = Enum.Font.GothamBold
+PetsTitle.TextXAlignment = Enum.TextXAlignment.Left
+PetsTitle.Parent = PetsPage
+
+local PetsCount = Instance.new("TextLabel")
+PetsCount.Size = UDim2.new(0, 150, 0, 30)
+PetsCount.Position = UDim2.new(1, -160, 0, 7)
+PetsCount.BackgroundTransparency = 1
+PetsCount.Text = "0 available"
+PetsCount.TextColor3 = Color3.fromRGB(180, 180, 180)
+PetsCount.TextSize = 13
+PetsCount.Font = Enum.Font.Gotham
+PetsCount.Parent = PetsPage
+
+local PetsList = Instance.new("ScrollingFrame")
+PetsList.Name = "PetsList"
+PetsList.Size = UDim2.new(1, -20, 0, 215)
+PetsList.Position = UDim2.new(0, 10, 0, 45)
+PetsList.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+PetsList.BorderSizePixel = 0
+PetsList.ScrollBarThickness = 5
+PetsList.CanvasSize = UDim2.new(0, 0, 0, 0)
+PetsList.Parent = PetsPage
+
+local PetsListCorner = Instance.new("UICorner")
+PetsListCorner.CornerRadius = UDim.new(0, 8)
+PetsListCorner.Parent = PetsList
+
+local PetsLayout = Instance.new("UIListLayout")
+PetsLayout.Padding = UDim.new(0, 4)
+PetsLayout.Parent = PetsList
+
+local RefreshPets = Instance.new("TextButton")
+RefreshPets.Size = UDim2.new(0, 150, 0, 35)
+RefreshPets.Position = UDim2.new(0, 10, 0, 270)
+RefreshPets.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
+RefreshPets.Text = "REFRESH PETS"
+RefreshPets.TextColor3 = Color3.fromRGB(255, 255, 255)
+RefreshPets.TextSize = 13
+RefreshPets.Font = Enum.Font.GothamBold
+RefreshPets.Parent = PetsPage
+
+local RefreshPetsCorner = Instance.new("UICorner")
+RefreshPetsCorner.CornerRadius = UDim.new(0, 7)
+RefreshPetsCorner.Parent = RefreshPets
+
+--==================================================
+-- STEALABLE PET SCANNER
+--==================================================
+
+local function IsStealablePet(object)
+
+	local name = string.lower(object.Name)
+
+	local LooksLikePet =
+		name:find("pet", 1, true) ~= nil
+		or name:find("cat", 1, true) ~= nil
+		or name:find("dog", 1, true) ~= nil
+		or name:find("dragon", 1, true) ~= nil
+
+	if not LooksLikePet then
+		return false
+	end
+
+	local Attributes = object:GetAttributes()
+
+	for attribute, value in pairs(Attributes) do
+
+		local key = string.lower(attribute)
+
+		if key == "stealable"
+			or key == "cansteal"
+			or key == "isstealable"
+			or key == "availabletosteal" then
+
+			if value == true then
+				return true
+			end
+
+		end
+	end
+
+	for _, tag in ipairs(CollectionService:GetTags(object)) do
+
+		if string.lower(tag) == "stealable" then
+			return true
+		end
+
+	end
+
+	return false
+
+end
+
+local function ClearPets()
+
+	for _, child in ipairs(PetsList:GetChildren()) do
+
+		if child:IsA("TextLabel") then
+			child:Destroy()
+		end
+
+	end
+
+end
+
+local function ScanStealablePets()
+
+	ClearPets()
+
+	local Pets = {}
+
+	for _, object in ipairs(workspace:GetDescendants()) do
+
+		if IsStealablePet(object) then
+
+			table.insert(Pets, {
+				Name = object.Name,
+				Class = object.ClassName,
+				Path = object:GetFullName()
+			})
+
+		end
+
+	end
+
+	table.sort(Pets, function(a, b)
+		return a.Name:lower() < b.Name:lower()
+	end)
+
+	PetsCount.Text = tostring(#Pets) .. " available"
+
+	if #Pets == 0 then
+
+		local Empty = Instance.new("TextLabel")
+		Empty.Size = UDim2.new(1, -10, 0, 35)
+		Empty.BackgroundTransparency = 1
+		Empty.Text = "No explicitly stealable pets detected."
+		Empty.TextColor3 = Color3.fromRGB(150, 150, 150)
+		Empty.TextSize = 13
+		Empty.Font = Enum.Font.Gotham
+		Empty.Parent = PetsList
+
+	else
+
+		for _, pet in ipairs(Pets) do
+
+			local Row = Instance.new("TextLabel")
+
+			Row.Size = UDim2.new(1, -10, 0, 45)
+			Row.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+
+			Row.Text =
+				"🐾  " .. pet.Name ..
+				"\n    " .. pet.Class ..
+				" | " .. pet.Path
+
+			Row.TextColor3 = Color3.fromRGB(235, 235, 235)
+			Row.TextSize = 12
+			Row.Font = Enum.Font.Gotham
+			Row.TextXAlignment = Enum.TextXAlignment.Left
+			Row.TextYAlignment = Enum.TextYAlignment.Center
+			Row.Parent = PetsList
+
+			local RowCorner = Instance.new("UICorner")
+			RowCorner.CornerRadius = UDim.new(0, 6)
+			RowCorner.Parent = Row
+
+		end
+	end
+
+	task.wait()
+
+	PetsList.CanvasSize = UDim2.new(
+		0,
+		0,
+		0,
+		PetsLayout.AbsoluteContentSize.Y + 5
+	)
+
+	print("========== STEALABLE PETS ==========")
+
+	for _, pet in ipairs(Pets) do
+		print(pet.Name, "|", pet.Class, "|", pet.Path)
+	end
+
+	print("Available stealable pets:", #Pets)
+	print("====================================")
+
+end
+
+RefreshPets.MouseButton1Click:Connect(ScanStealablePets)
+
+--==================================================
 -- TAB SWITCHING
 --==================================================
 
 CharacterTab.MouseButton1Click:Connect(function()
 
 	DataPage.Visible = false
+	PetsPage.Visible = false
 	InstantInteractButton.Visible = true
 
 	CharacterTab.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
 	DataTab.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+	PetsTab.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 
 end)
 
 DataTab.MouseButton1Click:Connect(function()
 
 	DataPage.Visible = true
+	PetsPage.Visible = false
 	InstantInteractButton.Visible = false
 
 	CharacterTab.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 	DataTab.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
+	PetsTab.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 
 	ScanEggs()
+
+end)
+
+PetsTab.MouseButton1Click:Connect(function()
+
+	DataPage.Visible = false
+	PetsPage.Visible = true
+	InstantInteractButton.Visible = false
+
+	CharacterTab.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+	DataTab.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+	PetsTab.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
+
+	ScanStealablePets()
 
 end)
 
@@ -534,8 +802,10 @@ YButton.MouseButton1Click:Connect(function()
 end)
 
 LockButton.MouseButton1Click:Connect(function()
+
 	Locked = not Locked
 	LockButton.Text = Locked and "🔒" or "🔓"
+
 end)
 
 YButton.InputBegan:Connect(function(input)
@@ -558,7 +828,9 @@ YButton.InputBegan:Connect(function(input)
 			end
 
 		end)
+
 	end
+
 end)
 
 UserInputService.InputChanged:Connect(function(input)
@@ -585,7 +857,9 @@ UserInputService.InputChanged:Connect(function(input)
 			YButton.Position.Y.Scale,
 			YButton.Position.Y.Offset + 11
 		)
+
 	end
+
 end)
 
 --==================================================
@@ -612,7 +886,9 @@ Title.InputBegan:Connect(function(input)
 			end
 
 		end)
+
 	end
+
 end)
 
 UserInputService.InputChanged:Connect(function(input)
@@ -632,5 +908,7 @@ UserInputService.InputChanged:Connect(function(input)
 			StartDashboardPosition.Y.Scale,
 			StartDashboardPosition.Y.Offset + Delta.Y
 		)
+
 	end
+
 end)
