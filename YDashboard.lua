@@ -1,11 +1,26 @@
---// Y Dashboard - Advanced Client Inspector
+--// Y Dashboard - Activity & Movement Monitor
+--// Maximum: 100 entries per log
+--// Logging is OFF by default
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
-local CollectionService = game:GetService("CollectionService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local LocalPlayer = Players.LocalPlayer
+
+--==================================================
+-- SETTINGS
+--==================================================
+
+local MAX_LOGS = 100
+
+local ActivityEnabled = false
+local MovementEnabled = false
+
+local ActivityLogs = {}
+local MovementLogs = {}
+
+local SelectedActivityLog = ""
+local SelectedMovementLog = ""
 
 --==================================================
 -- SCREEN GUI
@@ -75,921 +90,819 @@ DashboardCorner.Parent = Dashboard
 
 local Title = Instance.new("TextLabel")
 Title.Name = "Title"
-Title.Size = UDim2.new(1, 0, 0, 50)
+Title.Size = UDim2.new(1, 0, 0, 45)
 Title.BackgroundTransparency = 1
-Title.Text = "Y Dashboard • Client Inspector"
+Title.Text = "Y Dashboard"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 21
 Title.Font = Enum.Font.GothamBold
 Title.Parent = Dashboard
 
 --==================================================
--- FILTER CREATOR
+-- TABS
 --==================================================
 
-local function CreateFilter(Name, Placeholder, Position)
+local ActivityTab = Instance.new("TextButton")
+ActivityTab.Size = UDim2.new(0, 150, 0, 32)
+ActivityTab.Position = UDim2.new(0, 20, 0, 48)
+ActivityTab.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+ActivityTab.Text = "ACTIVITY"
+ActivityTab.TextColor3 = Color3.fromRGB(255, 255, 255)
+ActivityTab.TextSize = 12
+ActivityTab.Font = Enum.Font.GothamBold
+ActivityTab.Parent = Dashboard
 
-	local Box = Instance.new("TextBox")
+local ActivityCorner = Instance.new("UICorner")
+ActivityCorner.CornerRadius = UDim.new(0, 6)
+ActivityCorner.Parent = ActivityTab
 
-	Box.Name = Name
-	Box.Size = UDim2.new(0, 250, 0, 30)
-	Box.Position = Position
+local MovementTab = Instance.new("TextButton")
+MovementTab.Size = UDim2.new(0, 150, 0, 32)
+MovementTab.Position = UDim2.new(0, 180, 0, 48)
+MovementTab.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+MovementTab.Text = "MOVEMENT"
+MovementTab.TextColor3 = Color3.fromRGB(200, 200, 200)
+MovementTab.TextSize = 12
+MovementTab.Font = Enum.Font.GothamBold
+MovementTab.Parent = Dashboard
 
-	Box.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-
-	Box.TextColor3 =
-		Color3.fromRGB(255, 255, 255)
-
-	Box.PlaceholderColor3 =
-		Color3.fromRGB(125, 125, 125)
-
-	Box.PlaceholderText = Placeholder
-
-	Box.Text = ""
-
-	Box.TextSize = 11
-	Box.Font = Enum.Font.Gotham
-
-	Box.ClearTextOnFocus = false
-
-	Box.TextXAlignment =
-		Enum.TextXAlignment.Left
-
-	Box.Parent = Dashboard
-
-	local Corner = Instance.new("UICorner")
-	Corner.CornerRadius = UDim.new(0, 6)
-	Corner.Parent = Box
-
-	return Box
-
-end
+local MovementCorner = Instance.new("UICorner")
+MovementCorner.CornerRadius = UDim.new(0, 6)
+MovementCorner.Parent = MovementTab
 
 --==================================================
--- FILTERS
+-- ACTIVITY PAGE
 --==================================================
 
-local NameFilter =
-	CreateFilter(
-		"NameFilter",
-		"Name contains...",
-		UDim2.new(0, 20, 0, 60)
-	)
-
-local ClassFilter =
-	CreateFilter(
-		"ClassFilter",
-		"Class contains... (Model, Folder, Part)",
-		UDim2.new(0, 20, 0, 96)
-	)
-
-local PathFilter =
-	CreateFilter(
-		"PathFilter",
-		"Path contains...",
-		UDim2.new(0, 20, 0, 132)
-	)
-
-local AttributeFilter =
-	CreateFilter(
-		"AttributeFilter",
-		"Attribute name/value contains...",
-		UDim2.new(0, 20, 0, 168)
-	)
-
-local TagFilter =
-	CreateFilter(
-		"TagFilter",
-		"Tag contains...",
-		UDim2.new(0, 20, 0, 204)
-	)
-
-local ValueFilter =
-	CreateFilter(
-		"ValueFilter",
-		"Value contains...",
-		UDim2.new(0, 20, 0, 240)
-	)
+local ActivityPage = Instance.new("Frame")
+ActivityPage.Size = UDim2.new(1, -40, 1, -95)
+ActivityPage.Position = UDim2.new(0, 20, 0, 90)
+ActivityPage.BackgroundTransparency = 1
+ActivityPage.Parent = Dashboard
 
 --==================================================
--- SORT BUTTON
+-- ACTIVITY ON/OFF
 --==================================================
 
-local SortButton = Instance.new("TextButton")
-SortButton.Name = "SortButton"
-SortButton.Size = UDim2.new(0, 250, 0, 30)
-SortButton.Position = UDim2.new(0, 20, 0, 276)
+local ActivityToggle = Instance.new("TextButton")
+ActivityToggle.Size = UDim2.new(0, 120, 0, 30)
+ActivityToggle.Position = UDim2.new(0, 0, 0, 0)
+ActivityToggle.BackgroundColor3 = Color3.fromRGB(75, 45, 45)
+ActivityToggle.Text = "ACTIVITY: OFF"
+ActivityToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+ActivityToggle.TextSize = 11
+ActivityToggle.Font = Enum.Font.GothamBold
+ActivityToggle.Parent = ActivityPage
 
-SortButton.BackgroundColor3 =
-	Color3.fromRGB(45, 45, 45)
-
-SortButton.TextColor3 =
-	Color3.fromRGB(235, 235, 235)
-
-SortButton.Text =
-	"Sort: Name A-Z"
-
-SortButton.TextSize = 11
-SortButton.Font = Enum.Font.Gotham
-
-SortButton.Parent = Dashboard
-
-local SortCorner = Instance.new("UICorner")
-SortCorner.CornerRadius = UDim.new(0, 6)
-SortCorner.Parent = SortButton
+local ActivityToggleCorner = Instance.new("UICorner")
+ActivityToggleCorner.CornerRadius = UDim.new(0, 6)
+ActivityToggleCorner.Parent = ActivityToggle
 
 --==================================================
--- RESULTS
+-- ACTIVITY LIST
 --==================================================
 
-local Results = Instance.new("ScrollingFrame")
-Results.Name = "Results"
-Results.Size = UDim2.new(0, 250, 0, 130)
-Results.Position = UDim2.new(0, 20, 0, 312)
+local ActivityList = Instance.new("ScrollingFrame")
+ActivityList.Size = UDim2.new(0, 315, 0, 300)
+ActivityList.Position = UDim2.new(0, 0, 0, 40)
+ActivityList.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+ActivityList.BorderSizePixel = 0
+ActivityList.ScrollBarThickness = 5
+ActivityList.CanvasSize = UDim2.new(0, 0, 0, 0)
+ActivityList.Parent = ActivityPage
 
-Results.BackgroundColor3 =
-	Color3.fromRGB(20, 20, 20)
+local ActivityListCorner = Instance.new("UICorner")
+ActivityListCorner.CornerRadius = UDim.new(0, 8)
+ActivityListCorner.Parent = ActivityList
 
-Results.BorderSizePixel = 0
-Results.ScrollBarThickness = 5
-
-Results.CanvasSize =
-	UDim2.new(0, 0, 0, 0)
-
-Results.Parent = Dashboard
-
-local ResultsCorner = Instance.new("UICorner")
-ResultsCorner.CornerRadius = UDim.new(0, 8)
-ResultsCorner.Parent = Results
-
-local ResultsLayout = Instance.new("UIListLayout")
-ResultsLayout.Padding = UDim.new(0, 3)
-ResultsLayout.Parent = Results
+local ActivityLayout = Instance.new("UIListLayout")
+ActivityLayout.Padding = UDim.new(0, 3)
+ActivityLayout.Parent = ActivityList
 
 --==================================================
--- INFORMATION BOX
+-- ACTIVITY INFO
 --==================================================
 
-local Info = Instance.new("TextBox")
-Info.Name = "Info"
+local ActivityInfo = Instance.new("TextBox")
+ActivityInfo.Size = UDim2.new(0, 325, 0, 300)
+ActivityInfo.Position = UDim2.new(0, 325, 0, 0)
+ActivityInfo.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+ActivityInfo.TextColor3 = Color3.fromRGB(230, 230, 230)
+ActivityInfo.PlaceholderText = "Select an activity."
+ActivityInfo.PlaceholderColor3 = Color3.fromRGB(120, 120, 120)
+ActivityInfo.Text = ""
+ActivityInfo.TextSize = 12
+ActivityInfo.Font = Enum.Font.Code
+ActivityInfo.TextXAlignment = Enum.TextXAlignment.Left
+ActivityInfo.TextYAlignment = Enum.TextYAlignment.Top
+ActivityInfo.MultiLine = true
+ActivityInfo.ClearTextOnFocus = false
+ActivityInfo.TextEditable = false
+ActivityInfo.Parent = ActivityPage
 
-Info.Size =
-	UDim2.new(0, 390, 0, 382)
-
-Info.Position =
-	UDim2.new(0, 290, 0, 60)
-
-Info.BackgroundColor3 =
-	Color3.fromRGB(20, 20, 20)
-
-Info.TextColor3 =
-	Color3.fromRGB(230, 230, 230)
-
-Info.PlaceholderColor3 =
-	Color3.fromRGB(120, 120, 120)
-
-Info.PlaceholderText =
-	"Select an object to inspect it."
-
-Info.Text = ""
-
-Info.TextSize = 12
-Info.Font = Enum.Font.Code
-
-Info.TextXAlignment =
-	Enum.TextXAlignment.Left
-
-Info.TextYAlignment =
-	Enum.TextYAlignment.Top
-
-Info.MultiLine = true
-Info.ClearTextOnFocus = false
-Info.TextEditable = false
-
-Info.Parent = Dashboard
-
-local InfoCorner = Instance.new("UICorner")
-InfoCorner.CornerRadius = UDim.new(0, 8)
-InfoCorner.Parent = Info
+local ActivityInfoCorner = Instance.new("UICorner")
+ActivityInfoCorner.CornerRadius = UDim.new(0, 8)
+ActivityInfoCorner.Parent = ActivityInfo
 
 --==================================================
--- OBJECT CACHE
+-- ACTIVITY COPY
 --==================================================
 
-local InspectableObjects = {}
+local ActivityCopy = Instance.new("TextButton")
+ActivityCopy.Size = UDim2.new(0, 155, 0, 35)
+ActivityCopy.Position = UDim2.new(0, 325, 0, 310)
+ActivityCopy.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
+ActivityCopy.Text = "COPY LOG"
+ActivityCopy.TextColor3 = Color3.fromRGB(255, 255, 255)
+ActivityCopy.TextSize = 11
+ActivityCopy.Font = Enum.Font.GothamBold
+ActivityCopy.Parent = ActivityPage
+
+local ActivityClear = Instance.new("TextButton")
+ActivityClear.Size = UDim2.new(0, 155, 0, 35)
+ActivityClear.Position = UDim2.new(0, 490, 0, 310)
+ActivityClear.BackgroundColor3 = Color3.fromRGB(65, 40, 40)
+ActivityClear.Text = "CLEAR"
+ActivityClear.TextColor3 = Color3.fromRGB(255, 255, 255)
+ActivityClear.TextSize = 11
+ActivityClear.Font = Enum.Font.GothamBold
+ActivityClear.Parent = ActivityPage
 
 --==================================================
--- CLEAR RESULTS
+-- MOVEMENT PAGE
 --==================================================
 
-local function ClearResults()
+local MovementPage = Instance.new("Frame")
+MovementPage.Size = UDim2.new(1, -40, 1, -95)
+MovementPage.Position = UDim2.new(0, 20, 0, 90)
+MovementPage.BackgroundTransparency = 1
+MovementPage.Visible = false
+MovementPage.Parent = Dashboard
 
-	for _, Child in ipairs(Results:GetChildren()) do
+--==================================================
+-- MOVEMENT ON/OFF
+--==================================================
 
-		if Child:IsA("TextButton")
-			or Child:IsA("TextLabel") then
+local MovementToggle = Instance.new("TextButton")
+MovementToggle.Size = UDim2.new(0, 120, 0, 30)
+MovementToggle.Position = UDim2.new(0, 0, 0, 0)
+MovementToggle.BackgroundColor3 = Color3.fromRGB(75, 45, 45)
+MovementToggle.Text = "MOVEMENT: OFF"
+MovementToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+MovementToggle.TextSize = 11
+MovementToggle.Font = Enum.Font.GothamBold
+MovementToggle.Parent = MovementPage
 
+local MovementToggleCorner = Instance.new("UICorner")
+MovementToggleCorner.CornerRadius = UDim.new(0, 6)
+MovementToggleCorner.Parent = MovementToggle
+
+--==================================================
+-- MOVEMENT LIST
+--==================================================
+
+local MovementList = Instance.new("ScrollingFrame")
+MovementList.Size = UDim2.new(0, 315, 0, 300)
+MovementList.Position = UDim2.new(0, 0, 0, 40)
+MovementList.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MovementList.BorderSizePixel = 0
+MovementList.ScrollBarThickness = 5
+MovementList.CanvasSize = UDim2.new(0, 0, 0, 0)
+MovementList.Parent = MovementPage
+
+local MovementListCorner = Instance.new("UICorner")
+MovementListCorner.CornerRadius = UDim.new(0, 8)
+MovementListCorner.Parent = MovementList
+
+local MovementLayout = Instance.new("UIListLayout")
+MovementLayout.Padding = UDim.new(0, 3)
+MovementLayout.Parent = MovementList
+
+--==================================================
+-- MOVEMENT INFO
+--==================================================
+
+local MovementInfo = Instance.new("TextBox")
+MovementInfo.Size = UDim2.new(0, 325, 0, 300)
+MovementInfo.Position = UDim2.new(0, 325, 0, 0)
+MovementInfo.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MovementInfo.TextColor3 = Color3.fromRGB(230, 230, 230)
+MovementInfo.PlaceholderText = "Select a movement event."
+MovementInfo.PlaceholderColor3 = Color3.fromRGB(120, 120, 120)
+MovementInfo.Text = ""
+MovementInfo.TextSize = 12
+MovementInfo.Font = Enum.Font.Code
+MovementInfo.TextXAlignment = Enum.TextXAlignment.Left
+MovementInfo.TextYAlignment = Enum.TextYAlignment.Top
+MovementInfo.MultiLine = true
+MovementInfo.ClearTextOnFocus = false
+MovementInfo.TextEditable = false
+MovementInfo.Parent = MovementPage
+
+local MovementInfoCorner = Instance.new("UICorner")
+MovementInfoCorner.CornerRadius = UDim.new(0, 8)
+MovementInfoCorner.Parent = MovementInfo
+
+--==================================================
+-- MOVEMENT COPY / CLEAR
+--==================================================
+
+local MovementCopy = Instance.new("TextButton")
+MovementCopy.Size = UDim2.new(0, 155, 0, 35)
+MovementCopy.Position = UDim2.new(0, 325, 0, 310)
+MovementCopy.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
+MovementCopy.Text = "COPY LOG"
+MovementCopy.TextColor3 = Color3.fromRGB(255, 255, 255)
+MovementCopy.TextSize = 11
+MovementCopy.Font = Enum.Font.GothamBold
+MovementCopy.Parent = MovementPage
+
+local MovementClear = Instance.new("TextButton")
+MovementClear.Size = UDim2.new(0, 155, 0, 35)
+MovementClear.Position = UDim2.new(0, 490, 0, 310)
+MovementClear.BackgroundColor3 = Color3.fromRGB(65, 40, 40)
+MovementClear.Text = "CLEAR"
+MovementClear.TextColor3 = Color3.fromRGB(255, 255, 255)
+MovementClear.TextSize = 11
+MovementClear.Font = Enum.Font.GothamBold
+MovementClear.Parent = MovementPage
+
+--==================================================
+-- REBUILD LIST
+--==================================================
+
+local function RebuildActivityList()
+
+	for _, Child in ipairs(ActivityList:GetChildren()) do
+		if Child:IsA("TextButton") then
 			Child:Destroy()
-
 		end
-
 	end
 
-end
+	for _, Entry in ipairs(ActivityLogs) do
 
---==================================================
--- GET ATTRIBUTE SEARCH TEXT
---==================================================
+		local Button = Instance.new("TextButton")
 
-local function GetAttributeText(Object)
+		Button.Size =
+			UDim2.new(1, -10, 0, 32)
 
-	local Parts = {}
+		Button.BackgroundColor3 =
+			Color3.fromRGB(40, 40, 40)
 
-	for Name, Value in pairs(
-		Object:GetAttributes()
-	) do
+		Button.TextColor3 =
+			Color3.fromRGB(235, 235, 235)
 
-		table.insert(
-			Parts,
-			tostring(Name)
-		)
+		Button.TextSize = 10
+		Button.Font = Enum.Font.Code
+		Button.TextXAlignment =
+			Enum.TextXAlignment.Left
 
-		table.insert(
-			Parts,
-			tostring(Value)
-		)
+		Button.TextTruncate =
+			Enum.TextTruncate.AtEnd
 
-	end
+		Button.Text =
+			"  " .. Entry.Short
 
-	return string.lower(
-		table.concat(Parts, " ")
-	)
+		Button.Parent = ActivityList
 
-end
+		local Corner = Instance.new("UICorner")
+		Corner.CornerRadius = UDim.new(0, 6)
+		Corner.Parent = Button
 
---==================================================
--- GET TAG SEARCH TEXT
---==================================================
+		Button.MouseButton1Click:Connect(
+			function()
 
-local function GetTagText(Object)
+				SelectedActivityLog =
+					Entry.Full
 
-	local Tags =
-		CollectionService:GetTags(Object)
-
-	return string.lower(
-		table.concat(Tags, " ")
-	)
-
-end
-
---==================================================
--- GET VALUE SEARCH TEXT
---==================================================
-
-local function GetValueText(Object)
-
-	if Object:IsA("ValueBase") then
-
-		return string.lower(
-			tostring(Object.Value)
-		)
-
-	end
-
-	return ""
-
-end
-
---==================================================
--- CHECK FILTER
---==================================================
-
-local function MatchesFilter(Object, Filter, Text)
-
-	if Text == "" then
-		return true
-	end
-
-	return string.find(
-		Filter,
-		Text,
-		1,
-		true
-	) ~= nil
-
-end
-
---==================================================
--- OBJECT MATCHING
---==================================================
-
-local function ObjectMatches(Object)
-
-	local Name =
-		string.lower(Object.Name)
-
-	local Class =
-		string.lower(Object.ClassName)
-
-	local Path =
-		string.lower(Object:GetFullName())
-
-	local Attributes =
-		GetAttributeText(Object)
-
-	local Tags =
-		GetTagText(Object)
-
-	local Value =
-		GetValueText(Object)
-
-	local NameSearch =
-		string.lower(NameFilter.Text)
-
-	local ClassSearch =
-		string.lower(ClassFilter.Text)
-
-	local PathSearch =
-		string.lower(PathFilter.Text)
-
-	local AttributeSearch =
-		string.lower(AttributeFilter.Text)
-
-	local TagSearch =
-		string.lower(TagFilter.Text)
-
-	local ValueSearch =
-		string.lower(ValueFilter.Text)
-
-	-- NAME
-
-	if not MatchesFilter(
-		Object,
-		Name,
-		NameSearch
-	) then
-
-		return false
-
-	end
-
-	-- CLASS
-
-	if not MatchesFilter(
-		Object,
-		Class,
-		ClassSearch
-	) then
-
-		return false
-
-	end
-
-	-- PATH
-
-	if not MatchesFilter(
-		Object,
-		Path,
-		PathSearch
-	) then
-
-		return false
-
-	end
-
-	-- ATTRIBUTES
-
-	if not MatchesFilter(
-		Object,
-		Attributes,
-		AttributeSearch
-	) then
-
-		return false
-
-	end
-
-	-- TAGS
-
-	if not MatchesFilter(
-		Object,
-		Tags,
-		TagSearch
-	) then
-
-		return false
-
-	end
-
-	-- VALUE
-
-	if not MatchesFilter(
-		Object,
-		Value,
-		ValueSearch
-	) then
-
-		return false
-
-	end
-
-	return true
-
-end
-
---==================================================
--- INSPECT OBJECT
---==================================================
-
-local function InspectObject(Object)
-
-	local Lines = {}
-
-	table.insert(Lines, "================================")
-	table.insert(Lines, "        OBJECT INSPECTOR")
-	table.insert(Lines, "================================")
-	table.insert(Lines, "")
-
-	table.insert(Lines, "NAME")
-	table.insert(Lines, Object.Name)
-	table.insert(Lines, "")
-
-	table.insert(Lines, "CLASS")
-	table.insert(Lines, Object.ClassName)
-	table.insert(Lines, "")
-
-	table.insert(Lines, "PATH")
-	table.insert(Lines, Object:GetFullName())
-	table.insert(Lines, "")
-
-	--==================================================
-	-- VALUE
-	--==================================================
-
-	if Object:IsA("ValueBase") then
-
-		table.insert(
-			Lines,
-			"VALUE"
-		)
-
-		table.insert(
-			Lines,
-			tostring(Object.Value)
-		)
-
-		table.insert(Lines, "")
-
-	end
-
-	--==================================================
-	-- ATTRIBUTES
-	--==================================================
-
-	table.insert(
-		Lines,
-		"================================"
-	)
-
-	table.insert(
-		Lines,
-		"ATTRIBUTES"
-	)
-
-	table.insert(
-		Lines,
-		"================================"
-	)
-
-	local Attributes =
-		Object:GetAttributes()
-
-	if next(Attributes) == nil then
-
-		table.insert(
-			Lines,
-			"(none)"
-		)
-
-	else
-
-		for Name, Value in pairs(
-			Attributes
-		) do
-
-			table.insert(
-				Lines,
-				"@" ..
-				Name ..
-				" = " ..
-				tostring(Value) ..
-				" [" ..
-				typeof(Value) ..
-				"]"
-			)
-
-		end
-
-	end
-
-	table.insert(Lines, "")
-
-	--==================================================
-	-- TAGS
-	--==================================================
-
-	table.insert(
-		Lines,
-		"================================"
-	)
-
-	table.insert(
-		Lines,
-		"TAGS"
-	)
-
-	table.insert(
-		Lines,
-		"================================"
-	)
-
-	local Tags =
-		CollectionService:GetTags(Object)
-
-	if #Tags == 0 then
-
-		table.insert(
-			Lines,
-			"(none)"
-		)
-
-	else
-
-		for _, Tag in ipairs(Tags) do
-
-			table.insert(
-				Lines,
-				Tag
-			)
-
-		end
-
-	end
-
-	table.insert(Lines, "")
-
-	--==================================================
-	-- CHILDREN
-	--==================================================
-
-	table.insert(
-		Lines,
-		"================================"
-	)
-
-	table.insert(
-		Lines,
-		"CHILDREN"
-	)
-
-	table.insert(
-		Lines,
-		"================================"
-	)
-
-	local Children =
-		Object:GetChildren()
-
-	if #Children == 0 then
-
-		table.insert(
-			Lines,
-			"(none)"
-		)
-
-	else
-
-		for _, Child in ipairs(Children) do
-
-			table.insert(
-				Lines,
-				Child.Name ..
-				" [" ..
-				Child.ClassName ..
-				"]"
-			)
-
-			if Child:IsA("ValueBase") then
-
-				table.insert(
-					Lines,
-					"    VALUE = " ..
-					tostring(Child.Value)
-				)
+				ActivityInfo.Text =
+					Entry.Full
 
 			end
-
-			for Name, Value in pairs(
-				Child:GetAttributes()
-			) do
-
-				table.insert(
-					Lines,
-					"    @" ..
-					Name ..
-					" = " ..
-					tostring(Value)
-				)
-
-			end
-
-		end
-
-	end
-
-	Info.Text =
-		table.concat(Lines, "\n")
-
-end
-
---==================================================
--- ADD RESULT
---==================================================
-
-local function AddResult(Object)
-
-	local Button =
-		Instance.new("TextButton")
-
-	Button.Size =
-		UDim2.new(1, -10, 0, 32)
-
-	Button.BackgroundColor3 =
-		Color3.fromRGB(40, 40, 40)
-
-	Button.TextColor3 =
-		Color3.fromRGB(235, 235, 235)
-
-	Button.TextSize = 10
-	Button.Font = Enum.Font.Gotham
-
-	Button.TextXAlignment =
-		Enum.TextXAlignment.Left
-
-	Button.TextTruncate =
-		Enum.TextTruncate.AtEnd
-
-	Button.Text =
-		"  " ..
-		Object.Name ..
-		" [" ..
-		Object.ClassName ..
-		"]"
-
-	Button.Parent = Results
-
-	local Corner =
-		Instance.new("UICorner")
-
-	Corner.CornerRadius =
-		UDim.new(0, 6)
-
-	Corner.Parent = Button
-
-	Button.MouseButton1Click:Connect(
-		function()
-
-			InspectObject(Object)
-
-		end
-	)
-
-end
-
---==================================================
--- SORT SYSTEM
---==================================================
-
-local SortModes = {
-	"Name A-Z",
-	"Name Z-A",
-	"Class A-Z",
-	"Path A-Z",
-	"Children Most",
-	"Children Least"
-}
-
-local SortIndex = 1
-
-local function SortObjects(List)
-
-	local Mode =
-		SortModes[SortIndex]
-
-	table.sort(
-		List,
-		function(A, B)
-
-			if Mode == "Name A-Z" then
-
-				return string.lower(A.Name)
-					< string.lower(B.Name)
-
-			elseif Mode == "Name Z-A" then
-
-				return string.lower(A.Name)
-					> string.lower(B.Name)
-
-			elseif Mode == "Class A-Z" then
-
-				return string.lower(A.ClassName)
-					< string.lower(B.ClassName)
-
-			elseif Mode == "Path A-Z" then
-
-				return string.lower(A:GetFullName())
-					< string.lower(B:GetFullName())
-
-			elseif Mode == "Children Most" then
-
-				return #A:GetChildren()
-					> #B:GetChildren()
-
-			elseif Mode == "Children Least" then
-
-				return #A:GetChildren()
-					< #B:GetChildren()
-
-			end
-
-			return false
-
-		end
-	)
-
-end
-
---==================================================
--- SEARCH
---==================================================
-
-local function Search()
-
-	ClearResults()
-
-	local Matches = {}
-
-	for _, Object in ipairs(
-		InspectableObjects
-	) do
-
-		if Object.Parent
-			and ObjectMatches(Object) then
-
-			table.insert(
-				Matches,
-				Object
-			)
-
-		end
-
-	end
-
-	SortObjects(Matches)
-
-	-- Keep UI responsive
-
-	local Limit = math.min(
-		#Matches,
-		100
-	)
-
-	for Index = 1, Limit do
-
-		AddResult(
-			Matches[Index]
 		)
 
 	end
 
-	Results.CanvasSize =
+	ActivityList.CanvasSize =
 		UDim2.new(
 			0,
 			0,
 			0,
-			ResultsLayout.AbsoluteContentSize.Y + 5
+			ActivityLayout.AbsoluteContentSize.Y + 5
 		)
-
-	SortButton.Text =
-		"Sort: " ..
-		SortModes[SortIndex] ..
-		" • " ..
-		tostring(#Matches) ..
-		" matches"
 
 end
 
---==================================================
--- SCAN CLIENT OBJECTS
---==================================================
+local function RebuildMovementList()
 
-local function ScanInspectableObjects()
+	for _, Child in ipairs(MovementList:GetChildren()) do
+		if Child:IsA("TextButton") then
+			Child:Destroy()
+		end
+	end
 
-	InspectableObjects = {}
+	for _, Entry in ipairs(MovementLogs) do
 
-	-- Workspace
+		local Button = Instance.new("TextButton")
 
-	for _, Object in ipairs(
-		workspace:GetDescendants()
-	) do
+		Button.Size =
+			UDim2.new(1, -10, 0, 32)
 
-		table.insert(
-			InspectableObjects,
-			Object
+		Button.BackgroundColor3 =
+			Color3.fromRGB(40, 40, 40)
+
+		Button.TextColor3 =
+			Color3.fromRGB(235, 235, 235)
+
+		Button.TextSize = 10
+		Button.Font = Enum.Font.Code
+		Button.TextXAlignment =
+			Enum.TextXAlignment.Left
+
+		Button.TextTruncate =
+			Enum.TextTruncate.AtEnd
+
+		Button.Text =
+			"  " .. Entry.Short
+
+		Button.Parent = MovementList
+
+		local Corner = Instance.new("UICorner")
+		Corner.CornerRadius = UDim.new(0, 6)
+		Corner.Parent = Button
+
+		Button.MouseButton1Click:Connect(
+			function()
+
+				SelectedMovementLog =
+					Entry.Full
+
+				MovementInfo.Text =
+					Entry.Full
+
+			end
 		)
 
 	end
 
-	-- ReplicatedStorage
-
-	for _, Object in ipairs(
-		ReplicatedStorage:GetDescendants()
-	) do
-
-		table.insert(
-			InspectableObjects,
-			Object
+	MovementList.CanvasSize =
+		UDim2.new(
+			0,
+			0,
+			0,
+			MovementLayout.AbsoluteContentSize.Y + 5
 		)
-
-	end
-
-	-- LocalPlayer
-
-	for _, Object in ipairs(
-		LocalPlayer:GetDescendants()
-	) do
-
-		table.insert(
-			InspectableObjects,
-			Object
-		)
-
-	end
-
-	print(
-		"[YDashboard] Client objects:",
-		#InspectableObjects
-	)
-
-end
-
-ScanInspectableObjects()
-
---==================================================
--- LIVE FILTERING
---==================================================
-
-local Filters = {
-	NameFilter,
-	ClassFilter,
-	PathFilter,
-	AttributeFilter,
-	TagFilter,
-	ValueFilter
-}
-
-for _, Filter in ipairs(Filters) do
-
-	Filter:GetPropertyChangedSignal(
-		"Text"
-	):Connect(function()
-
-		Search()
-
-	end)
 
 end
 
 --==================================================
--- SORT BUTTON
+-- ADD ACTIVITY
 --==================================================
 
-SortButton.MouseButton1Click:Connect(
-	function()
+local function LogActivity(EventType, Object, Details)
 
-		SortIndex += 1
+	if not ActivityEnabled then
+		return
+	end
 
-		if SortIndex > #SortModes then
-			SortIndex = 1
+	local Name = "N/A"
+	local Class = "N/A"
+	local Path = "N/A"
+
+	if Object then
+
+		Name = Object.Name
+		Class = Object.ClassName
+
+		local Success, Result =
+			pcall(function()
+				return Object:GetFullName()
+			end)
+
+		if Success then
+			Path = Result
 		end
 
-		Search()
+	end
+
+	local Log = table.concat({
+		"================================",
+		"ACTIVITY EVENT",
+		"================================",
+		"",
+		"TIME",
+		os.date("%H:%M:%S"),
+		"",
+		"EVENT",
+		EventType,
+		"",
+		"NAME",
+		Name,
+		"",
+		"CLASS",
+		Class,
+		"",
+		"PATH",
+		Path,
+		"",
+		"DETAILS",
+		Details or "(none)"
+	}, "\n")
+
+	table.insert(ActivityLogs, 1, {
+		Short =
+			EventType ..
+			" • " ..
+			Name,
+
+		Full = Log
+	})
+
+	-- Keep newest 100
+
+	if #ActivityLogs > MAX_LOGS then
+		table.remove(ActivityLogs)
+	end
+
+	RebuildActivityList()
+
+end
+
+--==================================================
+-- ADD MOVEMENT
+--==================================================
+
+local LastMovementEvent = nil
+
+local function LogMovement(State)
+
+	if not MovementEnabled then
+		return
+	end
+
+	if LastMovementEvent == State then
+		return
+	end
+
+	LastMovementEvent = State
+
+	local Character =
+		LocalPlayer.Character
+
+	local Humanoid =
+		Character and
+		Character:FindFirstChildOfClass(
+			"Humanoid"
+		)
+
+	local Root =
+		Character and
+		Character:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+	local Path = "N/A"
+
+	if Root then
+		Path = Root:GetFullName()
+	end
+
+	local Speed = 0
+
+	if Humanoid then
+		Speed = Humanoid.WalkSpeed
+	end
+
+	local Log = table.concat({
+		"================================",
+		"MOVEMENT EVENT",
+		"================================",
+		"",
+		"TIME",
+		os.date("%H:%M:%S"),
+		"",
+		"EVENT",
+		State,
+		"",
+		"CHARACTER",
+		Character and Character.Name or "N/A",
+		"",
+		"ROOT PATH",
+		Path,
+		"",
+		"WALK SPEED",
+		tostring(Speed)
+	}, "\n")
+
+	table.insert(MovementLogs, 1, {
+		Short = State,
+		Full = Log
+	})
+
+	if #MovementLogs > MAX_LOGS then
+		table.remove(MovementLogs)
+	end
+
+	RebuildMovementList()
+
+end
+
+--==================================================
+-- ACTIVITY TOGGLE
+--==================================================
+
+ActivityToggle.MouseButton1Click:Connect(
+	function()
+
+		ActivityEnabled =
+			not ActivityEnabled
+
+		if ActivityEnabled then
+
+			ActivityToggle.Text =
+				"ACTIVITY: ON"
+
+			ActivityToggle.BackgroundColor3 =
+				Color3.fromRGB(40, 90, 55)
+
+		else
+
+			ActivityToggle.Text =
+				"ACTIVITY: OFF"
+
+			ActivityToggle.BackgroundColor3 =
+				Color3.fromRGB(75, 45, 45)
+
+		end
 
 	end
 )
 
 --==================================================
--- LOCK SYSTEM
+-- MOVEMENT TOGGLE
+--==================================================
+
+MovementToggle.MouseButton1Click:Connect(
+	function()
+
+		MovementEnabled =
+			not MovementEnabled
+
+		if MovementEnabled then
+
+			MovementToggle.Text =
+				"MOVEMENT: ON"
+
+			MovementToggle.BackgroundColor3 =
+				Color3.fromRGB(40, 90, 55)
+
+		else
+
+			MovementToggle.Text =
+				"MOVEMENT: OFF"
+
+			MovementToggle.BackgroundColor3 =
+				Color3.fromRGB(75, 45, 45)
+
+		end
+
+	end
+)
+
+--==================================================
+-- CHARACTER MONITOR
+--==================================================
+
+local function MonitorCharacter(Character)
+
+	local Humanoid =
+		Character:WaitForChild("Humanoid")
+
+	Character.ChildAdded:Connect(
+		function(Child)
+
+			if Child:IsA("Tool") then
+
+				LogActivity(
+					"TOOL EQUIPPED",
+					Child,
+					"Tool appeared inside the character."
+				)
+
+			end
+
+		end
+	)
+
+	Character.ChildRemoved:Connect(
+		function(Child)
+
+			if Child:IsA("Tool") then
+
+				LogActivity(
+					"TOOL UNEQUIPPED",
+					Child,
+					"Tool was removed from the character."
+				)
+
+			end
+
+		end
+	)
+
+	Humanoid.StateChanged:Connect(
+		function(_, NewState)
+
+			if NewState ==
+				Enum.HumanoidStateType.Jumping then
+
+				LogMovement("JUMPING")
+
+			elseif NewState ==
+				Enum.HumanoidStateType.Freefall then
+
+				LogMovement("FALLING")
+
+			elseif NewState ==
+				Enum.HumanoidStateType.Landed then
+
+				LogMovement("LANDED")
+
+			elseif NewState ==
+				Enum.HumanoidStateType.Climbing then
+
+				LogMovement("CLIMBING")
+
+			elseif NewState ==
+				Enum.HumanoidStateType.Swimming then
+
+				LogMovement("SWIMMING")
+
+			elseif NewState ==
+				Enum.HumanoidStateType.Running then
+
+				LogMovement("RUNNING")
+
+			elseif NewState ==
+				Enum.HumanoidStateType.Seated then
+
+				LogMovement("SEATED")
+
+			end
+
+		end
+	)
+
+end
+
+if LocalPlayer.Character then
+	MonitorCharacter(LocalPlayer.Character)
+end
+
+LocalPlayer.CharacterAdded:Connect(
+	function(Character)
+
+		LastMovementEvent = nil
+
+		MonitorCharacter(Character)
+
+	end
+)
+
+--==================================================
+-- COPY ACTIVITY
+--==================================================
+
+ActivityCopy.MouseButton1Click:Connect(
+	function()
+
+		if SelectedActivityLog == "" then
+			return
+		end
+
+		if setclipboard then
+
+			setclipboard(
+				SelectedActivityLog
+			)
+
+			ActivityCopy.Text =
+				"COPIED!"
+
+			task.delay(
+				1,
+				function()
+					ActivityCopy.Text =
+						"COPY LOG"
+				end
+			)
+
+		end
+
+	end
+)
+
+--==================================================
+-- COPY MOVEMENT
+--==================================================
+
+MovementCopy.MouseButton1Click:Connect(
+	function()
+
+		if SelectedMovementLog == "" then
+			return
+		end
+
+		if setclipboard then
+
+			setclipboard(
+				SelectedMovementLog
+			)
+
+			MovementCopy.Text =
+				"COPIED!"
+
+			task.delay(
+				1,
+				function()
+					MovementCopy.Text =
+						"COPY LOG"
+				end
+			)
+
+		end
+
+	end
+)
+
+--==================================================
+-- CLEAR ACTIVITY
+--==================================================
+
+ActivityClear.MouseButton1Click:Connect(
+	function()
+
+		ActivityLogs = {}
+		SelectedActivityLog = ""
+		ActivityInfo.Text = ""
+
+		RebuildActivityList()
+
+	end
+)
+
+--==================================================
+-- CLEAR MOVEMENT
+--==================================================
+
+MovementClear.MouseButton1Click:Connect(
+	function()
+
+		MovementLogs = {}
+		SelectedMovementLog = ""
+		MovementInfo.Text = ""
+
+		RebuildMovementList()
+
+	end
+)
+
+--==================================================
+-- TAB SWITCHING
+--==================================================
+
+ActivityTab.MouseButton1Click:Connect(
+	function()
+
+		ActivityPage.Visible = true
+		MovementPage.Visible = false
+
+		ActivityTab.BackgroundColor3 =
+			Color3.fromRGB(60, 60, 60)
+
+		MovementTab.BackgroundColor3 =
+			Color3.fromRGB(40, 40, 40)
+
+	end
+)
+
+MovementTab.MouseButton1Click:Connect(
+	function()
+
+		ActivityPage.Visible = false
+		MovementPage.Visible = true
+
+		ActivityTab.BackgroundColor3 =
+			Color3.fromRGB(40, 40, 40)
+
+		MovementTab.BackgroundColor3 =
+			Color3.fromRGB(60, 60, 60)
+
+	end
+)
+
+--==================================================
+-- LOCK
 --==================================================
 
 local Locked = false
@@ -1006,7 +919,7 @@ LockButton.MouseButton1Click:Connect(
 )
 
 --==================================================
--- DASHBOARD TOGGLE
+-- TOGGLE DASHBOARD
 --==================================================
 
 YButton.MouseButton1Click:Connect(
@@ -1039,12 +952,8 @@ YButton.InputBegan:Connect(
 			Enum.UserInputType.Touch then
 
 			DraggingY = true
-
-			DragStartY =
-				Input.Position
-
-			StartPosY =
-				YButton.Position
+			DragStartY = Input.Position
+			StartPosY = YButton.Position
 
 			Input.Changed:Connect(
 				function()
@@ -1085,10 +994,7 @@ Title.InputBegan:Connect(
 			Enum.UserInputType.Touch then
 
 			DraggingDashboard = true
-
-			DragStartDashboard =
-				Input.Position
-
+			DragStartDashboard = Input.Position
 			StartDashboardPosition =
 				Dashboard.Position
 
@@ -1116,8 +1022,6 @@ Title.InputBegan:Connect(
 
 UserInputService.InputChanged:Connect(
 	function(Input)
-
-		-- Y BUTTON
 
 		if DraggingY and not Locked then
 
@@ -1148,8 +1052,6 @@ UserInputService.InputChanged:Connect(
 			end
 
 		end
-
-		-- DASHBOARD
 
 		if DraggingDashboard and not Locked then
 
