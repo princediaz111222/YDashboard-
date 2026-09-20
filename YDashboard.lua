@@ -1,4 +1,4 @@
---// Y Dashboard - Pet Inspector
+--// Y Dashboard - Advanced Client Inspector
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -59,8 +59,8 @@ LockCorner.Parent = LockButton
 
 local Dashboard = Instance.new("Frame")
 Dashboard.Name = "Dashboard"
-Dashboard.Size = UDim2.new(0, 600, 0, 400)
-Dashboard.Position = UDim2.new(0.5, -300, 0.5, -200)
+Dashboard.Size = UDim2.new(0, 700, 0, 450)
+Dashboard.Position = UDim2.new(0.5, -350, 0.5, -225)
 Dashboard.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 Dashboard.Visible = false
 Dashboard.Parent = ScreenGui
@@ -77,101 +77,219 @@ local Title = Instance.new("TextLabel")
 Title.Name = "Title"
 Title.Size = UDim2.new(1, 0, 0, 50)
 Title.BackgroundTransparency = 1
-Title.Text = "Y Dashboard"
+Title.Text = "Y Dashboard • Client Inspector"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 22
+Title.TextSize = 21
 Title.Font = Enum.Font.GothamBold
 Title.Parent = Dashboard
 
 --==================================================
--- PET SEARCH
+-- FILTER CREATOR
 --==================================================
 
-local PetSearch = Instance.new("TextBox")
-PetSearch.Name = "PetSearch"
-PetSearch.Size = UDim2.new(0, 250, 0, 38)
-PetSearch.Position = UDim2.new(0, 20, 0, 70)
-PetSearch.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-PetSearch.TextColor3 = Color3.fromRGB(255, 255, 255)
-PetSearch.PlaceholderColor3 = Color3.fromRGB(130, 130, 130)
-PetSearch.PlaceholderText = "Search pet/object..."
-PetSearch.Text = ""
-PetSearch.TextSize = 13
-PetSearch.Font = Enum.Font.Gotham
-PetSearch.ClearTextOnFocus = false
-PetSearch.TextXAlignment = Enum.TextXAlignment.Left
-PetSearch.Parent = Dashboard
+local function CreateFilter(Name, Placeholder, Position)
 
-local PetSearchCorner = Instance.new("UICorner")
-PetSearchCorner.CornerRadius = UDim.new(0, 7)
-PetSearchCorner.Parent = PetSearch
+	local Box = Instance.new("TextBox")
 
---==================================================
--- SEARCH RESULTS
---==================================================
+	Box.Name = Name
+	Box.Size = UDim2.new(0, 250, 0, 30)
+	Box.Position = Position
 
-local PetResults = Instance.new("ScrollingFrame")
-PetResults.Name = "PetResults"
-PetResults.Size = UDim2.new(0, 250, 0, 220)
-PetResults.Position = UDim2.new(0, 20, 0, 115)
-PetResults.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-PetResults.BorderSizePixel = 0
-PetResults.ScrollBarThickness = 5
-PetResults.CanvasSize = UDim2.new(0, 0, 0, 0)
-PetResults.Parent = Dashboard
+	Box.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 
-local PetResultsCorner = Instance.new("UICorner")
-PetResultsCorner.CornerRadius = UDim.new(0, 8)
-PetResultsCorner.Parent = PetResults
+	Box.TextColor3 =
+		Color3.fromRGB(255, 255, 255)
 
-local PetResultsLayout = Instance.new("UIListLayout")
-PetResultsLayout.Padding = UDim.new(0, 3)
-PetResultsLayout.Parent = PetResults
+	Box.PlaceholderColor3 =
+		Color3.fromRGB(125, 125, 125)
+
+	Box.PlaceholderText = Placeholder
+
+	Box.Text = ""
+
+	Box.TextSize = 11
+	Box.Font = Enum.Font.Gotham
+
+	Box.ClearTextOnFocus = false
+
+	Box.TextXAlignment =
+		Enum.TextXAlignment.Left
+
+	Box.Parent = Dashboard
+
+	local Corner = Instance.new("UICorner")
+	Corner.CornerRadius = UDim.new(0, 6)
+	Corner.Parent = Box
+
+	return Box
+
+end
 
 --==================================================
--- PET INFORMATION BOX
+-- FILTERS
 --==================================================
 
-local PetInfo = Instance.new("TextBox")
-PetInfo.Name = "PetInfo"
-PetInfo.Size = UDim2.new(0, 290, 0, 265)
-PetInfo.Position = UDim2.new(0, 290, 0, 70)
-PetInfo.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-PetInfo.TextColor3 = Color3.fromRGB(230, 230, 230)
-PetInfo.PlaceholderColor3 = Color3.fromRGB(120, 120, 120)
-PetInfo.PlaceholderText = "Select an object to inspect it."
-PetInfo.Text = ""
-PetInfo.TextSize = 12
-PetInfo.Font = Enum.Font.Code
-PetInfo.TextXAlignment = Enum.TextXAlignment.Left
-PetInfo.TextYAlignment = Enum.TextYAlignment.Top
-PetInfo.MultiLine = true
-PetInfo.ClearTextOnFocus = false
-PetInfo.TextEditable = false
-PetInfo.Parent = Dashboard
+local NameFilter =
+	CreateFilter(
+		"NameFilter",
+		"Name contains...",
+		UDim2.new(0, 20, 0, 60)
+	)
 
-local PetInfoCorner = Instance.new("UICorner")
-PetInfoCorner.CornerRadius = UDim.new(0, 8)
-PetInfoCorner.Parent = PetInfo
+local ClassFilter =
+	CreateFilter(
+		"ClassFilter",
+		"Class contains... (Model, Folder, Part)",
+		UDim2.new(0, 20, 0, 96)
+	)
+
+local PathFilter =
+	CreateFilter(
+		"PathFilter",
+		"Path contains...",
+		UDim2.new(0, 20, 0, 132)
+	)
+
+local AttributeFilter =
+	CreateFilter(
+		"AttributeFilter",
+		"Attribute name/value contains...",
+		UDim2.new(0, 20, 0, 168)
+	)
+
+local TagFilter =
+	CreateFilter(
+		"TagFilter",
+		"Tag contains...",
+		UDim2.new(0, 20, 0, 204)
+	)
+
+local ValueFilter =
+	CreateFilter(
+		"ValueFilter",
+		"Value contains...",
+		UDim2.new(0, 20, 0, 240)
+	)
 
 --==================================================
--- CLIENT OBJECT CACHE
+-- SORT BUTTON
+--==================================================
+
+local SortButton = Instance.new("TextButton")
+SortButton.Name = "SortButton"
+SortButton.Size = UDim2.new(0, 250, 0, 30)
+SortButton.Position = UDim2.new(0, 20, 0, 276)
+
+SortButton.BackgroundColor3 =
+	Color3.fromRGB(45, 45, 45)
+
+SortButton.TextColor3 =
+	Color3.fromRGB(235, 235, 235)
+
+SortButton.Text =
+	"Sort: Name A-Z"
+
+SortButton.TextSize = 11
+SortButton.Font = Enum.Font.Gotham
+
+SortButton.Parent = Dashboard
+
+local SortCorner = Instance.new("UICorner")
+SortCorner.CornerRadius = UDim.new(0, 6)
+SortCorner.Parent = SortButton
+
+--==================================================
+-- RESULTS
+--==================================================
+
+local Results = Instance.new("ScrollingFrame")
+Results.Name = "Results"
+Results.Size = UDim2.new(0, 250, 0, 130)
+Results.Position = UDim2.new(0, 20, 0, 312)
+
+Results.BackgroundColor3 =
+	Color3.fromRGB(20, 20, 20)
+
+Results.BorderSizePixel = 0
+Results.ScrollBarThickness = 5
+
+Results.CanvasSize =
+	UDim2.new(0, 0, 0, 0)
+
+Results.Parent = Dashboard
+
+local ResultsCorner = Instance.new("UICorner")
+ResultsCorner.CornerRadius = UDim.new(0, 8)
+ResultsCorner.Parent = Results
+
+local ResultsLayout = Instance.new("UIListLayout")
+ResultsLayout.Padding = UDim.new(0, 3)
+ResultsLayout.Parent = Results
+
+--==================================================
+-- INFORMATION BOX
+--==================================================
+
+local Info = Instance.new("TextBox")
+Info.Name = "Info"
+
+Info.Size =
+	UDim2.new(0, 390, 0, 382)
+
+Info.Position =
+	UDim2.new(0, 290, 0, 60)
+
+Info.BackgroundColor3 =
+	Color3.fromRGB(20, 20, 20)
+
+Info.TextColor3 =
+	Color3.fromRGB(230, 230, 230)
+
+Info.PlaceholderColor3 =
+	Color3.fromRGB(120, 120, 120)
+
+Info.PlaceholderText =
+	"Select an object to inspect it."
+
+Info.Text = ""
+
+Info.TextSize = 12
+Info.Font = Enum.Font.Code
+
+Info.TextXAlignment =
+	Enum.TextXAlignment.Left
+
+Info.TextYAlignment =
+	Enum.TextYAlignment.Top
+
+Info.MultiLine = true
+Info.ClearTextOnFocus = false
+Info.TextEditable = false
+
+Info.Parent = Dashboard
+
+local InfoCorner = Instance.new("UICorner")
+InfoCorner.CornerRadius = UDim.new(0, 8)
+InfoCorner.Parent = Info
+
+--==================================================
+-- OBJECT CACHE
 --==================================================
 
 local InspectableObjects = {}
 
 --==================================================
--- CLEAR SEARCH RESULTS
+-- CLEAR RESULTS
 --==================================================
 
-local function ClearPetResults()
+local function ClearResults()
 
-	for _, child in ipairs(PetResults:GetChildren()) do
+	for _, Child in ipairs(Results:GetChildren()) do
 
-		if child:IsA("TextButton")
-			or child:IsA("TextLabel") then
+		if Child:IsA("TextButton")
+			or Child:IsA("TextLabel") then
 
-			child:Destroy()
+			Child:Destroy()
 
 		end
 
@@ -180,50 +298,287 @@ local function ClearPetResults()
 end
 
 --==================================================
+-- GET ATTRIBUTE SEARCH TEXT
+--==================================================
+
+local function GetAttributeText(Object)
+
+	local Parts = {}
+
+	for Name, Value in pairs(
+		Object:GetAttributes()
+	) do
+
+		table.insert(
+			Parts,
+			tostring(Name)
+		)
+
+		table.insert(
+			Parts,
+			tostring(Value)
+		)
+
+	end
+
+	return string.lower(
+		table.concat(Parts, " ")
+	)
+
+end
+
+--==================================================
+-- GET TAG SEARCH TEXT
+--==================================================
+
+local function GetTagText(Object)
+
+	local Tags =
+		CollectionService:GetTags(Object)
+
+	return string.lower(
+		table.concat(Tags, " ")
+	)
+
+end
+
+--==================================================
+-- GET VALUE SEARCH TEXT
+--==================================================
+
+local function GetValueText(Object)
+
+	if Object:IsA("ValueBase") then
+
+		return string.lower(
+			tostring(Object.Value)
+		)
+
+	end
+
+	return ""
+
+end
+
+--==================================================
+-- CHECK FILTER
+--==================================================
+
+local function MatchesFilter(Object, Filter, Text)
+
+	if Text == "" then
+		return true
+	end
+
+	return string.find(
+		Filter,
+		Text,
+		1,
+		true
+	) ~= nil
+
+end
+
+--==================================================
+-- OBJECT MATCHING
+--==================================================
+
+local function ObjectMatches(Object)
+
+	local Name =
+		string.lower(Object.Name)
+
+	local Class =
+		string.lower(Object.ClassName)
+
+	local Path =
+		string.lower(Object:GetFullName())
+
+	local Attributes =
+		GetAttributeText(Object)
+
+	local Tags =
+		GetTagText(Object)
+
+	local Value =
+		GetValueText(Object)
+
+	local NameSearch =
+		string.lower(NameFilter.Text)
+
+	local ClassSearch =
+		string.lower(ClassFilter.Text)
+
+	local PathSearch =
+		string.lower(PathFilter.Text)
+
+	local AttributeSearch =
+		string.lower(AttributeFilter.Text)
+
+	local TagSearch =
+		string.lower(TagFilter.Text)
+
+	local ValueSearch =
+		string.lower(ValueFilter.Text)
+
+	-- NAME
+
+	if not MatchesFilter(
+		Object,
+		Name,
+		NameSearch
+	) then
+
+		return false
+
+	end
+
+	-- CLASS
+
+	if not MatchesFilter(
+		Object,
+		Class,
+		ClassSearch
+	) then
+
+		return false
+
+	end
+
+	-- PATH
+
+	if not MatchesFilter(
+		Object,
+		Path,
+		PathSearch
+	) then
+
+		return false
+
+	end
+
+	-- ATTRIBUTES
+
+	if not MatchesFilter(
+		Object,
+		Attributes,
+		AttributeSearch
+	) then
+
+		return false
+
+	end
+
+	-- TAGS
+
+	if not MatchesFilter(
+		Object,
+		Tags,
+		TagSearch
+	) then
+
+		return false
+
+	end
+
+	-- VALUE
+
+	if not MatchesFilter(
+		Object,
+		Value,
+		ValueSearch
+	) then
+
+		return false
+
+	end
+
+	return true
+
+end
+
+--==================================================
 -- INSPECT OBJECT
 --==================================================
 
-local function InspectObject(object)
+local function InspectObject(Object)
 
-	local Info = {}
+	local Lines = {}
 
-	table.insert(Info, "================================")
-	table.insert(Info, "        OBJECT INSPECTOR")
-	table.insert(Info, "================================")
-	table.insert(Info, "")
+	table.insert(Lines, "================================")
+	table.insert(Lines, "        OBJECT INSPECTOR")
+	table.insert(Lines, "================================")
+	table.insert(Lines, "")
 
-	table.insert(Info, "NAME")
-	table.insert(Info, object.Name)
-	table.insert(Info, "")
+	table.insert(Lines, "NAME")
+	table.insert(Lines, Object.Name)
+	table.insert(Lines, "")
 
-	table.insert(Info, "CLASS")
-	table.insert(Info, object.ClassName)
-	table.insert(Info, "")
+	table.insert(Lines, "CLASS")
+	table.insert(Lines, Object.ClassName)
+	table.insert(Lines, "")
 
-	table.insert(Info, "PATH")
-	table.insert(Info, object:GetFullName())
-	table.insert(Info, "")
+	table.insert(Lines, "PATH")
+	table.insert(Lines, Object:GetFullName())
+	table.insert(Lines, "")
+
+	--==================================================
+	-- VALUE
+	--==================================================
+
+	if Object:IsA("ValueBase") then
+
+		table.insert(
+			Lines,
+			"VALUE"
+		)
+
+		table.insert(
+			Lines,
+			tostring(Object.Value)
+		)
+
+		table.insert(Lines, "")
+
+	end
 
 	--==================================================
 	-- ATTRIBUTES
 	--==================================================
 
-	table.insert(Info, "================================")
-	table.insert(Info, "ATTRIBUTES")
-	table.insert(Info, "================================")
+	table.insert(
+		Lines,
+		"================================"
+	)
 
-	local Attributes = object:GetAttributes()
+	table.insert(
+		Lines,
+		"ATTRIBUTES"
+	)
+
+	table.insert(
+		Lines,
+		"================================"
+	)
+
+	local Attributes =
+		Object:GetAttributes()
 
 	if next(Attributes) == nil then
 
-		table.insert(Info, "(none)")
+		table.insert(
+			Lines,
+			"(none)"
+		)
 
 	else
 
-		for Name, Value in pairs(Attributes) do
+		for Name, Value in pairs(
+			Attributes
+		) do
 
 			table.insert(
-				Info,
+				Lines,
 				"@" ..
 				Name ..
 				" = " ..
@@ -237,82 +592,113 @@ local function InspectObject(object)
 
 	end
 
-	table.insert(Info, "")
+	table.insert(Lines, "")
 
 	--==================================================
 	-- TAGS
 	--==================================================
 
-	table.insert(Info, "================================")
-	table.insert(Info, "TAGS")
-	table.insert(Info, "================================")
+	table.insert(
+		Lines,
+		"================================"
+	)
+
+	table.insert(
+		Lines,
+		"TAGS"
+	)
+
+	table.insert(
+		Lines,
+		"================================"
+	)
 
 	local Tags =
-		CollectionService:GetTags(object)
+		CollectionService:GetTags(Object)
 
 	if #Tags == 0 then
 
-		table.insert(Info, "(none)")
+		table.insert(
+			Lines,
+			"(none)"
+		)
 
 	else
 
 		for _, Tag in ipairs(Tags) do
-			table.insert(Info, Tag)
+
+			table.insert(
+				Lines,
+				Tag
+			)
+
 		end
 
 	end
 
-	table.insert(Info, "")
+	table.insert(Lines, "")
 
 	--==================================================
 	-- CHILDREN
 	--==================================================
 
-	table.insert(Info, "================================")
-	table.insert(Info, "CHILDREN")
-	table.insert(Info, "================================")
+	table.insert(
+		Lines,
+		"================================"
+	)
 
-	local Children = object:GetChildren()
+	table.insert(
+		Lines,
+		"CHILDREN"
+	)
+
+	table.insert(
+		Lines,
+		"================================"
+	)
+
+	local Children =
+		Object:GetChildren()
 
 	if #Children == 0 then
 
-		table.insert(Info, "(none)")
+		table.insert(
+			Lines,
+			"(none)"
+		)
 
 	else
 
 		for _, Child in ipairs(Children) do
 
 			table.insert(
-				Info,
+				Lines,
 				Child.Name ..
 				" [" ..
 				Child.ClassName ..
 				"]"
 			)
 
+			if Child:IsA("ValueBase") then
+
+				table.insert(
+					Lines,
+					"    VALUE = " ..
+					tostring(Child.Value)
+				)
+
+			end
+
 			for Name, Value in pairs(
 				Child:GetAttributes()
 			) do
 
 				table.insert(
-					Info,
+					Lines,
 					"    @" ..
 					Name ..
 					" = " ..
-					tostring(Value) ..
-					" [" ..
-					typeof(Value) ..
-					"]"
-				)
-
-			end
-
-			if Child:IsA("ValueBase") then
-
-				table.insert(
-					Info,
-					"    VALUE = " ..
-					tostring(Child.Value)
+					tostring(Value)
 				)
 
 			end
@@ -321,45 +707,125 @@ local function InspectObject(object)
 
 	end
 
-	PetInfo.Text =
-		table.concat(Info, "\n")
+	Info.Text =
+		table.concat(Lines, "\n")
 
 end
 
 --==================================================
--- ADD SEARCH RESULT
+-- ADD RESULT
 --==================================================
 
-local function AddPetResult(object)
+local function AddResult(Object)
 
-	local Button = Instance.new("TextButton")
+	local Button =
+		Instance.new("TextButton")
 
-	Button.Size = UDim2.new(1, -10, 0, 40)
-	Button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-	Button.TextColor3 = Color3.fromRGB(235, 235, 235)
-	Button.TextSize = 11
+	Button.Size =
+		UDim2.new(1, -10, 0, 32)
+
+	Button.BackgroundColor3 =
+		Color3.fromRGB(40, 40, 40)
+
+	Button.TextColor3 =
+		Color3.fromRGB(235, 235, 235)
+
+	Button.TextSize = 10
 	Button.Font = Enum.Font.Gotham
-	Button.TextXAlignment = Enum.TextXAlignment.Left
-	Button.TextTruncate = Enum.TextTruncate.AtEnd
+
+	Button.TextXAlignment =
+		Enum.TextXAlignment.Left
+
+	Button.TextTruncate =
+		Enum.TextTruncate.AtEnd
 
 	Button.Text =
 		"  " ..
-		object.Name ..
+		Object.Name ..
 		" [" ..
-		object.ClassName ..
+		Object.ClassName ..
 		"]"
 
-	Button.Parent = PetResults
+	Button.Parent = Results
 
-	local Corner = Instance.new("UICorner")
-	Corner.CornerRadius = UDim.new(0, 6)
+	local Corner =
+		Instance.new("UICorner")
+
+	Corner.CornerRadius =
+		UDim.new(0, 6)
+
 	Corner.Parent = Button
 
-	Button.MouseButton1Click:Connect(function()
+	Button.MouseButton1Click:Connect(
+		function()
 
-		InspectObject(object)
+			InspectObject(Object)
 
-	end)
+		end
+	)
+
+end
+
+--==================================================
+-- SORT SYSTEM
+--==================================================
+
+local SortModes = {
+	"Name A-Z",
+	"Name Z-A",
+	"Class A-Z",
+	"Path A-Z",
+	"Children Most",
+	"Children Least"
+}
+
+local SortIndex = 1
+
+local function SortObjects(List)
+
+	local Mode =
+		SortModes[SortIndex]
+
+	table.sort(
+		List,
+		function(A, B)
+
+			if Mode == "Name A-Z" then
+
+				return string.lower(A.Name)
+					< string.lower(B.Name)
+
+			elseif Mode == "Name Z-A" then
+
+				return string.lower(A.Name)
+					> string.lower(B.Name)
+
+			elseif Mode == "Class A-Z" then
+
+				return string.lower(A.ClassName)
+					< string.lower(B.ClassName)
+
+			elseif Mode == "Path A-Z" then
+
+				return string.lower(A:GetFullName())
+					< string.lower(B:GetFullName())
+
+			elseif Mode == "Children Most" then
+
+				return #A:GetChildren()
+					> #B:GetChildren()
+
+			elseif Mode == "Children Least" then
+
+				return #A:GetChildren()
+					< #B:GetChildren()
+
+			end
+
+			return false
+
+		end
+	)
 
 end
 
@@ -367,56 +833,64 @@ end
 -- SEARCH
 --==================================================
 
-local function SearchPets()
+local function Search()
 
-	ClearPetResults()
+	ClearResults()
 
-	local Search =
-		string.lower(PetSearch.Text)
+	local Matches = {}
 
-	if Search == "" then
-		return
-	end
+	for _, Object in ipairs(
+		InspectableObjects
+	) do
 
-	local Found = 0
+		if Object.Parent
+			and ObjectMatches(Object) then
 
-	for _, object in ipairs(InspectableObjects) do
-
-		local Name =
-			string.lower(object.Name)
-
-		local Path =
-			string.lower(object:GetFullName())
-
-		if string.find(Name, Search, 1, true)
-			or string.find(Path, Search, 1, true) then
-
-			AddPetResult(object)
-
-			Found += 1
-
-			if Found >= 50 then
-				break
-			end
+			table.insert(
+				Matches,
+				Object
+			)
 
 		end
 
 	end
 
-	task.wait()
+	SortObjects(Matches)
 
-	PetResults.CanvasSize =
+	-- Keep UI responsive
+
+	local Limit = math.min(
+		#Matches,
+		100
+	)
+
+	for Index = 1, Limit do
+
+		AddResult(
+			Matches[Index]
+		)
+
+	end
+
+	Results.CanvasSize =
 		UDim2.new(
 			0,
 			0,
 			0,
-			PetResultsLayout.AbsoluteContentSize.Y + 5
+			ResultsLayout.AbsoluteContentSize.Y + 5
 		)
+
+	SortButton.Text =
+		"Sort: " ..
+		SortModes[SortIndex] ..
+		" • " ..
+		tostring(#Matches) ..
+		" matches"
 
 end
 
 --==================================================
--- BUILD OBJECT CACHE
+-- SCAN CLIENT OBJECTS
 --==================================================
 
 local function ScanInspectableObjects()
@@ -463,7 +937,7 @@ local function ScanInspectableObjects()
 	end
 
 	print(
-		"[YDashboard] Inspectable objects:",
+		"[YDashboard] Client objects:",
 		#InspectableObjects
 	)
 
@@ -471,11 +945,48 @@ end
 
 ScanInspectableObjects()
 
-PetSearch:GetPropertyChangedSignal("Text"):Connect(function()
+--==================================================
+-- LIVE FILTERING
+--==================================================
 
-	SearchPets()
+local Filters = {
+	NameFilter,
+	ClassFilter,
+	PathFilter,
+	AttributeFilter,
+	TagFilter,
+	ValueFilter
+}
 
-end)
+for _, Filter in ipairs(Filters) do
+
+	Filter:GetPropertyChangedSignal(
+		"Text"
+	):Connect(function()
+
+		Search()
+
+	end)
+
+end
+
+--==================================================
+-- SORT BUTTON
+--==================================================
+
+SortButton.MouseButton1Click:Connect(
+	function()
+
+		SortIndex += 1
+
+		if SortIndex > #SortModes then
+			SortIndex = 1
+		end
+
+		Search()
+
+	end
+)
 
 --==================================================
 -- LOCK SYSTEM
@@ -483,25 +994,29 @@ end)
 
 local Locked = false
 
-LockButton.MouseButton1Click:Connect(function()
+LockButton.MouseButton1Click:Connect(
+	function()
 
-	Locked = not Locked
+		Locked = not Locked
 
-	LockButton.Text =
-		Locked and "🔒" or "🔓"
+		LockButton.Text =
+			Locked and "🔒" or "🔓"
 
-end)
+	end
+)
 
 --==================================================
 -- DASHBOARD TOGGLE
 --==================================================
 
-YButton.MouseButton1Click:Connect(function()
+YButton.MouseButton1Click:Connect(
+	function()
 
-	Dashboard.Visible =
-		not Dashboard.Visible
+		Dashboard.Visible =
+			not Dashboard.Visible
 
-end)
+	end
+)
 
 --==================================================
 -- DRAG Y BUTTON
@@ -511,35 +1026,43 @@ local DraggingY = false
 local DragStartY
 local StartPosY
 
-YButton.InputBegan:Connect(function(input)
+YButton.InputBegan:Connect(
+	function(Input)
 
-	if Locked then
-		return
+		if Locked then
+			return
+		end
+
+		if Input.UserInputType ==
+			Enum.UserInputType.MouseButton1
+			or Input.UserInputType ==
+			Enum.UserInputType.Touch then
+
+			DraggingY = true
+
+			DragStartY =
+				Input.Position
+
+			StartPosY =
+				YButton.Position
+
+			Input.Changed:Connect(
+				function()
+
+					if Input.UserInputState ==
+						Enum.UserInputState.End then
+
+						DraggingY = false
+
+					end
+
+				end
+			)
+
+		end
+
 	end
-
-	if input.UserInputType ==
-		Enum.UserInputType.MouseButton1
-		or input.UserInputType ==
-		Enum.UserInputType.Touch then
-
-		DraggingY = true
-		DragStartY = input.Position
-		StartPosY = YButton.Position
-
-		input.Changed:Connect(function()
-
-			if input.UserInputState ==
-				Enum.UserInputState.End then
-
-				DraggingY = false
-
-			end
-
-		end)
-
-	end
-
-end)
+)
 
 --==================================================
 -- DRAG DASHBOARD
@@ -549,92 +1072,107 @@ local DraggingDashboard = false
 local DragStartDashboard
 local StartDashboardPosition
 
-Title.InputBegan:Connect(function(input)
+Title.InputBegan:Connect(
+	function(Input)
 
-	if input.UserInputType ==
-		Enum.UserInputType.MouseButton1
-		or input.UserInputType ==
-		Enum.UserInputType.Touch then
+		if Locked then
+			return
+		end
 
-		DraggingDashboard = true
-		DragStartDashboard = input.Position
-		StartDashboardPosition = Dashboard.Position
+		if Input.UserInputType ==
+			Enum.UserInputType.MouseButton1
+			or Input.UserInputType ==
+			Enum.UserInputType.Touch then
 
-		input.Changed:Connect(function()
+			DraggingDashboard = true
 
-			if input.UserInputState ==
-				Enum.UserInputState.End then
+			DragStartDashboard =
+				Input.Position
 
-				DraggingDashboard = false
+			StartDashboardPosition =
+				Dashboard.Position
 
-			end
+			Input.Changed:Connect(
+				function()
 
-		end)
+					if Input.UserInputState ==
+						Enum.UserInputState.End then
+
+						DraggingDashboard = false
+
+					end
+
+				end
+			)
+
+		end
 
 	end
-
-end)
+)
 
 --==================================================
 -- INPUT MOVEMENT
 --==================================================
 
-UserInputService.InputChanged:Connect(function(input)
+UserInputService.InputChanged:Connect(
+	function(Input)
 
-	-- Y BUTTON
+		-- Y BUTTON
 
-	if DraggingY and not Locked then
+		if DraggingY and not Locked then
 
-		if input.UserInputType ==
-			Enum.UserInputType.MouseMovement
-			or input.UserInputType ==
-			Enum.UserInputType.Touch then
+			if Input.UserInputType ==
+				Enum.UserInputType.MouseMovement
+				or Input.UserInputType ==
+				Enum.UserInputType.Touch then
 
-			local Delta =
-				input.Position - DragStartY
+				local Delta =
+					Input.Position - DragStartY
 
-			YButton.Position =
-				UDim2.new(
-					StartPosY.X.Scale,
-					StartPosY.X.Offset + Delta.X,
-					StartPosY.Y.Scale,
-					StartPosY.Y.Offset + Delta.Y
-				)
+				YButton.Position =
+					UDim2.new(
+						StartPosY.X.Scale,
+						StartPosY.X.Offset + Delta.X,
+						StartPosY.Y.Scale,
+						StartPosY.Y.Offset + Delta.Y
+					)
 
-			LockButton.Position =
-				UDim2.new(
-					YButton.Position.X.Scale,
-					YButton.Position.X.Offset + 60,
-					YButton.Position.Y.Scale,
-					YButton.Position.Y.Offset + 11
-				)
+				LockButton.Position =
+					UDim2.new(
+						YButton.Position.X.Scale,
+						YButton.Position.X.Offset + 60,
+						YButton.Position.Y.Scale,
+						YButton.Position.Y.Offset + 11
+					)
+
+			end
+
+		end
+
+		-- DASHBOARD
+
+		if DraggingDashboard and not Locked then
+
+			if Input.UserInputType ==
+				Enum.UserInputType.MouseMovement
+				or Input.UserInputType ==
+				Enum.UserInputType.Touch then
+
+				local Delta =
+					Input.Position -
+					DragStartDashboard
+
+				Dashboard.Position =
+					UDim2.new(
+						StartDashboardPosition.X.Scale,
+						StartDashboardPosition.X.Offset + Delta.X,
+						StartDashboardPosition.Y.Scale,
+						StartDashboardPosition.Y.Offset + Delta.Y
+					)
+
+			end
 
 		end
 
 	end
-
-	-- DASHBOARD
-
-	if DraggingDashboard then
-
-		if input.UserInputType ==
-			Enum.UserInputType.MouseMovement
-			or input.UserInputType ==
-			Enum.UserInputType.Touch then
-
-			local Delta =
-				input.Position - DragStartDashboard
-
-			Dashboard.Position =
-				UDim2.new(
-					StartDashboardPosition.X.Scale,
-					StartDashboardPosition.X.Offset + Delta.X,
-					StartDashboardPosition.Y.Scale,
-					StartDashboardPosition.Y.Offset + Delta.Y
-				)
-
-		end
-
-	end
-
-end)
+)
