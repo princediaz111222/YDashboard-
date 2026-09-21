@@ -1,39 +1,60 @@
---// YDashboard
---// Activity + Movement Monitor
---// Deep Client-Side Inspector
+--// Y Dashboard
+--// For use in your own Roblox experience.
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
-local Workspace = game:GetService("Workspace")
+local ProximityPromptService = game:GetService("ProximityPromptService")
+local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
-local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
-
-local MAX_LOGS = 100
-
-local ActivityEnabled = false
-local MovementEnabled = false
-
-local ActivityLogs = {}
-local MovementLogs = {}
-
-local MonitoredClicks = {}
-local MonitoredPrompts = {}
-local MonitoredTools = {}
-local MonitoredButtons = {}
-
-local LastMovement = nil
-local Locked = false
 
 --==================================================
--- GUI
+-- VARIABLES
+--==================================================
+
+local Locked = false
+local Terminated = false
+
+local InstantInteract = false
+local WalkSpeedEnabled = false
+local FlyJumpEnabled = false
+local PlayerESPEnabled = false
+
+local WalkSpeedValue = 16
+
+local Connections = {}
+local ESPObjects = {}
+
+local DraggingY = false
+local DragStartY
+local StartPosY
+
+local DraggingDashboard = false
+local DragStartDashboard
+local StartDashboardPosition
+
+local FlyJumpConnection
+local ESPRefreshConnection
+
+local function Connect(signal, callback)
+	if Terminated then
+		return
+	end
+
+	local connection = signal:Connect(callback)
+	table.insert(Connections, connection)
+
+	return connection
+end
+
+--==================================================
+-- SCREEN GUI
 --==================================================
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "YDashboard"
 ScreenGui.ResetOnSpawn = false
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-ScreenGui.Parent = PlayerGui
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
 --==================================================
 -- Y BUTTON
@@ -41,1638 +62,787 @@ ScreenGui.Parent = PlayerGui
 
 local YButton = Instance.new("TextButton")
 YButton.Name = "YButton"
-YButton.Size = UDim2.fromOffset(48, 48)
-YButton.Position = UDim2.new(0, 20, 0.5, -24)
-YButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-YButton.BorderSizePixel = 0
+YButton.Size = UDim2.new(0, 55, 0, 55)
+YButton.Position = UDim2.new(0.5, -27, 0, 20)
+YButton.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
 YButton.Text = "Y"
 YButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-YButton.TextSize = 21
+YButton.TextSize = 24
 YButton.Font = Enum.Font.GothamBold
-YButton.ZIndex = 100
-YButton.Active = true
 YButton.Parent = ScreenGui
 
 local YCorner = Instance.new("UICorner")
-YCorner.CornerRadius = UDim.new(1, 0)
+YCorner.CornerRadius = UDim.new(0, 12)
 YCorner.Parent = YButton
+
+--==================================================
+-- LOCK BUTTON
+--==================================================
+
+local LockButton = Instance.new("TextButton")
+LockButton.Name = "LockButton"
+LockButton.Size = UDim2.new(0, 32, 0, 32)
+LockButton.Position = UDim2.new(0.5, 38, 0, 31)
+LockButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+LockButton.Text = "🔓"
+LockButton.TextSize = 16
+LockButton.Font = Enum.Font.Gotham
+LockButton.Parent = ScreenGui
+
+local LockCorner = Instance.new("UICorner")
+LockCorner.CornerRadius = UDim.new(0, 8)
+LockCorner.Parent = LockButton
 
 --==================================================
 -- DASHBOARD
 --==================================================
 
 local Dashboard = Instance.new("Frame")
-Dashboard.Name = "Main"
-Dashboard.Size = UDim2.fromOffset(700, 450)
-Dashboard.Position = UDim2.new(0.5, -350, 0.5, -225)
-Dashboard.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-Dashboard.BorderSizePixel = 0
-Dashboard.Visible = true
-Dashboard.ZIndex = 10
+Dashboard.Name = "Dashboard"
+Dashboard.Size = UDim2.new(0, 600, 0, 450)
+Dashboard.Position = UDim2.new(0.5, -300, 0.5, -225)
+Dashboard.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Dashboard.Visible = false
 Dashboard.Parent = ScreenGui
 
-Instance.new("UICorner", Dashboard).CornerRadius = UDim.new(0, 10)
+local DashboardCorner = Instance.new("UICorner")
+DashboardCorner.CornerRadius = UDim.new(0, 12)
+DashboardCorner.Parent = Dashboard
 
 --==================================================
--- TITLE BAR
+-- TITLE
 --==================================================
-
-local TitleBar = Instance.new("Frame")
-TitleBar.Size = UDim2.new(1, 0, 0, 45)
-TitleBar.BackgroundColor3 = Color3.fromRGB(27, 27, 27)
-TitleBar.BorderSizePixel = 0
-TitleBar.ZIndex = 20
-TitleBar.Active = true
-TitleBar.Parent = Dashboard
 
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -100, 1, 0)
-Title.Position = UDim2.fromOffset(15, 0)
+Title.Name = "Title"
+Title.Size = UDim2.new(1, 0, 0, 50)
 Title.BackgroundTransparency = 1
-Title.Text = "YDashboard"
+Title.Text = "Lennonhub"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 19
+Title.TextSize = 22
 Title.Font = Enum.Font.GothamBold
-Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.ZIndex = 21
-Title.Parent = TitleBar
+Title.Parent = Dashboard
+
+--==================================================
+-- BUTTON FACTORIES
+--==================================================
+
+local function CreateButton(name, text, position)
+	local Button = Instance.new("TextButton")
+	Button.Name = name
+	Button.Size = UDim2.new(0, 250, 0, 42)
+	Button.Position = position
+	Button.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+	Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+	Button.TextSize = 14
+	Button.Font = Enum.Font.GothamBold
+	Button.Text = text
+	Button.Parent = Dashboard
+
+	local Corner = Instance.new("UICorner")
+	Corner.CornerRadius = UDim.new(0, 8)
+	Corner.Parent = Button
+
+	return Button
+end
+
+local function CreateSwitch(name, text, position)
+	return CreateButton(
+		name,
+		text .. ": OFF",
+		position
+	)
+end
+
+--==================================================
+-- EXECUTE
+--==================================================
+
+local ExecuteButton = CreateButton(
+	"ExecuteButton",
+	"Execute lennonhubV3",
+	UDim2.new(0, 20, 0, 70)
+)
+
+--==================================================
+-- INSTANT INTERACTION
+--==================================================
+
+local InstantInteractButton = CreateSwitch(
+	"InstantInteractButton",
+	"Instant Interaction",
+	UDim2.new(0, 20, 0, 120)
+)
+
+--==================================================
+-- RESET CHARACTER
+--==================================================
+
+local ResetButton = CreateButton(
+	"ResetButton",
+	"Reset Character",
+	UDim2.new(0, 290, 0, 120)
+)
+
+--==================================================
+-- WALK SPEED
+--==================================================
+
+local WalkSpeedButton = CreateSwitch(
+	"WalkSpeedButton",
+	"WalkSpeed",
+	UDim2.new(0, 20, 0, 170)
+)
+
+local WalkSpeedBox = Instance.new("TextBox")
+WalkSpeedBox.Name = "WalkSpeedBox"
+WalkSpeedBox.Size = UDim2.new(0, 250, 0, 42)
+WalkSpeedBox.Position = UDim2.new(0, 290, 0, 170)
+WalkSpeedBox.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+WalkSpeedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+WalkSpeedBox.PlaceholderColor3 = Color3.fromRGB(170, 170, 170)
+WalkSpeedBox.TextSize = 14
+WalkSpeedBox.Font = Enum.Font.GothamBold
+WalkSpeedBox.PlaceholderText = "WalkSpeed"
+WalkSpeedBox.Text = "16"
+WalkSpeedBox.ClearTextOnFocus = false
+WalkSpeedBox.Parent = Dashboard
+
+local WalkSpeedCorner = Instance.new("UICorner")
+WalkSpeedCorner.CornerRadius = UDim.new(0, 8)
+WalkSpeedCorner.Parent = WalkSpeedBox
+
+--==================================================
+-- FLY JUMP
+--==================================================
+
+local FlyJumpButton = CreateSwitch(
+	"FlyJumpButton",
+	"FlyJump",
+	UDim2.new(0, 20, 0, 220)
+)
+
+--==================================================
+-- PLAYER ESP
+--==================================================
+
+local PlayerESPButton = CreateSwitch(
+	"PlayerESPButton",
+	"Player ESP",
+	UDim2.new(0, 290, 0, 220)
+)
+
+--==================================================
+-- TERMINATE
+--==================================================
+
+local TerminateButton = CreateButton(
+	"TerminateButton",
+	"TERMINATE Y DASHBOARD",
+	UDim2.new(0.5, -125, 1, -55)
+)
+
+TerminateButton.BackgroundColor3 = Color3.fromRGB(120, 35, 35)
+
+--==================================================
+-- EXECUTE
+--==================================================
+
+Connect(
+	ExecuteButton.MouseButton1Click,
+	function()
+	loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/73260ee6e0b3892aa700a13e1fd7d3c9.lua"))()
+
+	end
+)
+
+--==================================================
+-- INSTANT INTERACTION
+--==================================================
+
+local function SetInstantInteraction(enabled)
+	InstantInteract = enabled
+
+	if enabled then
+		for _, object in ipairs(workspace:GetDescendants()) do
+			if object:IsA("ProximityPrompt") then
+				object.HoldDuration = 0
+			end
+		end
+	end
+
+	InstantInteractButton.Text =
+		"Instant Interaction: " .. (enabled and "ON" or "OFF")
+end
+
+Connect(
+	ProximityPromptService.PromptShown,
+	function(prompt)
+		if InstantInteract and not Terminated then
+			prompt.HoldDuration = 0
+		end
+	end
+)
+
+Connect(
+	InstantInteractButton.MouseButton1Click,
+	function()
+		SetInstantInteraction(not InstantInteract)
+	end
+)
+
+--==================================================
+-- WALK SPEED
+--==================================================
+
+Connect(
+	WalkSpeedBox.FocusLost,
+	function()
+		local value = tonumber(WalkSpeedBox.Text)
+
+		if value then
+			WalkSpeedValue = value
+		else
+			WalkSpeedBox.Text = tostring(WalkSpeedValue)
+		end
+	end
+)
+
+Connect(
+	WalkSpeedButton.MouseButton1Click,
+	function()
+		WalkSpeedEnabled = not WalkSpeedEnabled
+
+		WalkSpeedButton.Text =
+			"WalkSpeed: " .. (WalkSpeedEnabled and "ON" or "OFF")
+	end
+)
+
+Connect(
+	RunService.Heartbeat,
+	function()
+		if Terminated or not WalkSpeedEnabled then
+			return
+		end
+
+		local Character = LocalPlayer.Character
+
+		if not Character then
+			return
+		end
+
+		local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+
+		if Humanoid then
+			Humanoid.WalkSpeed = WalkSpeedValue
+		end
+	end
+)
+
+--==================================================
+-- FLY JUMP
+--==================================================
+
+local function DisconnectFlyJump()
+	if FlyJumpConnection then
+		FlyJumpConnection:Disconnect()
+		FlyJumpConnection = nil
+	end
+end
+
+local function SetupFlyJump()
+	DisconnectFlyJump()
+
+	if not FlyJumpEnabled then
+		return
+	end
+
+	-- JumpRequest fires when the normal Roblox jump button
+	-- is pressed/held, including mobile.
+	FlyJumpConnection = UserInputService.JumpRequest:Connect(
+		function()
+			if Terminated or not FlyJumpEnabled then
+				return
+			end
+
+			local Character = LocalPlayer.Character
+
+			if not Character then
+				return
+			end
+
+			local Humanoid =
+				Character:FindFirstChildOfClass("Humanoid")
+
+			local RootPart =
+				Character:FindFirstChild("HumanoidRootPart")
+
+			if not Humanoid or not RootPart then
+				return
+			end
+
+			-- Keep the character airborne while Jump is requested.
+			Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+
+			local CurrentVelocity =
+				RootPart.AssemblyLinearVelocity
+
+			RootPart.AssemblyLinearVelocity = Vector3.new(
+				CurrentVelocity.X,
+				60,
+				CurrentVelocity.Z
+			)
+		end
+	)
+end
+
+Connect(
+	FlyJumpButton.MouseButton1Click,
+	function()
+		FlyJumpEnabled = not FlyJumpEnabled
+
+		FlyJumpButton.Text =
+			"FlyJump: " .. (FlyJumpEnabled and "ON" or "OFF")
+
+		if FlyJumpEnabled then
+			SetupFlyJump()
+		else
+			DisconnectFlyJump()
+		end
+	end
+)
+
+--==================================================
+-- PLAYER ESP
+--==================================================
+
+local function RemoveESP(player)
+	local Data = ESPObjects[player]
+
+	if not Data then
+		return
+	end
+
+	if Data.Highlight then
+		Data.Highlight:Destroy()
+	end
+
+	if Data.Billboard then
+		Data.Billboard:Destroy()
+	end
+
+	ESPObjects[player] = nil
+end
+
+local function AddESP(player)
+	if player == LocalPlayer then
+		return
+	end
+
+	local Character = player.Character
+
+	if not Character then
+		return
+	end
+
+	local Humanoid =
+		Character:FindFirstChildOfClass("Humanoid")
+
+	local Head =
+		Character:FindFirstChild("Head")
+
+	if not Humanoid or not Head then
+		return
+	end
+
+	RemoveESP(player)
+
+	--==================================================
+	-- HIGHLIGHT
+	--==================================================
+
+	local Highlight = Instance.new("Highlight")
+	Highlight.Name = "YPlayerESP"
+	Highlight.FillTransparency = 0.5
+	Highlight.OutlineTransparency = 0
+	Highlight.Adornee = Character
+	Highlight.Parent = Character
+
+	--==================================================
+	-- NAME + HP BILLBOARD
+	--==================================================
+
+	local Billboard = Instance.new("BillboardGui")
+	Billboard.Name = "YPlayerInfo"
+	Billboard.Adornee = Head
+	Billboard.Size = UDim2.new(0, 200, 0, 45)
+
+	-- Offset above the player's head.
+	Billboard.StudsOffset = Vector3.new(0, 3, 0)
+
+	-- Prevents the billboard from scaling with distance.
+	Billboard.SizeOffset = Vector2.new(0, 0)
+	Billboard.AlwaysOnTop = true
+	Billboard.MaxDistance = math.huge
+	Billboard.Parent = Head
+
+	local InfoLabel = Instance.new("TextLabel")
+	InfoLabel.Name = "PlayerInfo"
+	InfoLabel.Size = UDim2.new(1, 0, 1, 0)
+	InfoLabel.BackgroundTransparency = 1
+	InfoLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	InfoLabel.TextStrokeTransparency = 0
+	InfoLabel.TextScaled = false
+	InfoLabel.TextSize = 14
+	InfoLabel.Font = Enum.Font.GothamBold
+	InfoLabel.TextXAlignment = Enum.TextXAlignment.Center
+	InfoLabel.TextYAlignment = Enum.TextYAlignment.Center
+	InfoLabel.Parent = Billboard
+
+	local function UpdateInfo()
+		if not Humanoid or not Humanoid.Parent then
+			return
+		end
+
+		local Health = math.max(0, math.floor(Humanoid.Health + 0.5))
+		local MaxHealth = math.max(0, math.floor(Humanoid.MaxHealth + 0.5))
+
+		InfoLabel.Text =
+			player.DisplayName
+			.. " [" .. player.Name .. "]"
+			.. "\nHP: "
+			.. Health
+			.. " / "
+			.. MaxHealth
+	end
+
+	UpdateInfo()
+
+	ESPObjects[player] = {
+		Highlight = Highlight,
+		Billboard = Billboard,
+		UpdateInfo = UpdateInfo
+	}
+end
+
+local function UpdateESP()
+	if Terminated then
+		return
+	end
+
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= LocalPlayer then
+			if PlayerESPEnabled then
+				AddESP(player)
+			else
+				RemoveESP(player)
+			end
+		end
+	end
+end
+
+--==================================================
+-- ESP AUTO REFRESH
+--==================================================
+
+ESPRefreshConnection = Connect(
+	RunService.Heartbeat,
+	function()
+		if not PlayerESPEnabled or Terminated then
+			return
+		end
+
+		-- Refresh every 1 second.
+		if not ESPRefreshConnection.LastRefresh
+			or os.clock() - ESPRefreshConnection.LastRefresh >= 1 then
+
+			ESPRefreshConnection.LastRefresh = os.clock()
+
+			UpdateESP()
+
+			for player, Data in pairs(ESPObjects) do
+				if Data.UpdateInfo then
+					Data.UpdateInfo()
+				end
+			end
+		end
+	end
+)
+
+--==================================================
+-- PLAYER JOIN / LEAVE
+--==================================================
+
+Connect(
+	Players.PlayerAdded,
+	function(player)
+		Connect(
+			player.CharacterAdded,
+			function()
+				task.wait(0.2)
+
+				if PlayerESPEnabled and not Terminated then
+					AddESP(player)
+				end
+			end
+		)
+	end
+)
+
+Connect(
+	Players.PlayerRemoving,
+	function(player)
+		RemoveESP(player)
+	end
+)
+
+Connect(
+	PlayerESPButton.MouseButton1Click,
+	function()
+		PlayerESPEnabled = not PlayerESPEnabled
+
+		PlayerESPButton.Text =
+			"Player ESP: "
+			.. (PlayerESPEnabled and "ON" or "OFF")
+
+		UpdateESP()
+	end
+)
+
+--==================================================
+-- RESET CHARACTER
+--==================================================
+
+Connect(
+	ResetButton.MouseButton1Click,
+	function()
+		local Character = LocalPlayer.Character
+
+		if not Character then
+			return
+		end
+
+		local Humanoid =
+			Character:FindFirstChildOfClass("Humanoid")
+
+		if Humanoid then
+			Humanoid.Health = 0
+		end
+	end
+)
+
+--==================================================
+-- CHARACTER ADDED
+--==================================================
+
+Connect(
+	LocalPlayer.CharacterAdded,
+	function()
+		task.wait(0.2)
+
+		if Terminated then
+			return
+		end
+
+		if FlyJumpEnabled then
+			SetupFlyJump()
+		end
+
+		if WalkSpeedEnabled then
+			local Character = LocalPlayer.Character
+
+			local Humanoid =
+				Character
+				and Character:FindFirstChildOfClass("Humanoid")
+
+			if Humanoid then
+				Humanoid.WalkSpeed = WalkSpeedValue
+			end
+		end
+	end
+)
 
 --==================================================
 -- LOCK
 --==================================================
 
-local LockButton = Instance.new("TextButton")
-LockButton.Size = UDim2.fromOffset(34, 34)
-LockButton.Position = UDim2.new(1, -82, 0, 6)
-LockButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-LockButton.BorderSizePixel = 0
-LockButton.Text = "🔓"
-LockButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-LockButton.TextSize = 15
-LockButton.Font = Enum.Font.GothamBold
-LockButton.ZIndex = 25
-LockButton.Active = true
-LockButton.Parent = TitleBar
+Connect(
+	LockButton.MouseButton1Click,
+	function()
+		if Terminated then
+			return
+		end
 
-Instance.new("UICorner", LockButton).CornerRadius = UDim.new(0, 7)
-
---==================================================
--- CLOSE
---==================================================
-
-local CloseButton = Instance.new("TextButton")
-CloseButton.Size = UDim2.fromOffset(34, 34)
-CloseButton.Position = UDim2.new(1, -42, 0, 6)
-CloseButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-CloseButton.BorderSizePixel = 0
-CloseButton.Text = "×"
-CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseButton.TextSize = 22
-CloseButton.Font = Enum.Font.GothamBold
-CloseButton.ZIndex = 25
-CloseButton.Active = true
-CloseButton.Parent = TitleBar
-
-Instance.new("UICorner", CloseButton).CornerRadius = UDim.new(0, 7)
-
---==================================================
--- CONTENT
---==================================================
-
-local Content = Instance.new("Frame")
-Content.Size = UDim2.new(1, -20, 1, -60)
-Content.Position = UDim2.fromOffset(10, 50)
-Content.BackgroundTransparency = 1
-Content.ZIndex = 15
-Content.Parent = Dashboard
-
---==================================================
--- TABS
---==================================================
-
-local TabBar = Instance.new("Frame")
-TabBar.Size = UDim2.new(1, 0, 0, 38)
-TabBar.BackgroundTransparency = 1
-TabBar.ZIndex = 20
-TabBar.Parent = Content
-
-local TabLayout = Instance.new("UIListLayout")
-TabLayout.FillDirection = Enum.FillDirection.Horizontal
-TabLayout.Padding = UDim.new(0, 8)
-TabLayout.Parent = TabBar
-
-local function CreateTab(Text)
-
-    local Button = Instance.new("TextButton")
-    Button.Size = UDim2.fromOffset(115, 35)
-    Button.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-    Button.BorderSizePixel = 0
-    Button.Text = Text
-    Button.TextColor3 = Color3.fromRGB(230, 230, 230)
-    Button.TextSize = 13
-    Button.Font = Enum.Font.GothamBold
-    Button.ZIndex = 25
-    Button.Active = true
-    Button.Parent = TabBar
-
-    Instance.new("UICorner", Button).CornerRadius = UDim.new(0, 7)
-
-    return Button
-end
-
-local ActivityTab = CreateTab("ACTIVITY")
-local MovementTab = CreateTab("MOVEMENT")
-
---==================================================
--- PAGES
---==================================================
-
-local function CreatePage()
-
-    local Page = Instance.new("Frame")
-    Page.Size = UDim2.new(1, 0, 1, -45)
-    Page.Position = UDim2.fromOffset(0, 45)
-    Page.BackgroundTransparency = 1
-    Page.Visible = false
-    Page.ZIndex = 15
-    Page.Parent = Content
-
-    return Page
-end
-
-local ActivityPage = CreatePage()
-local MovementPage = CreatePage()
-
-ActivityPage.Visible = true
-
---==================================================
--- BUTTON CREATOR
---==================================================
-
-local function CreateButton(Parent, Text, Position, Size)
-
-    local Button = Instance.new("TextButton")
-    Button.Size = Size
-    Button.Position = Position
-    Button.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-    Button.BorderSizePixel = 0
-    Button.Text = Text
-    Button.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Button.TextSize = 12
-    Button.Font = Enum.Font.GothamBold
-    Button.ZIndex = 30
-    Button.Active = true
-    Button.Parent = Parent
-
-    Instance.new("UICorner", Button).CornerRadius = UDim.new(0, 7)
-
-    return Button
-end
-
---==================================================
--- CONTROLS
---==================================================
-
-local ActivityToggle = CreateButton(
-    ActivityPage,
-    "ACTIVITY: OFF",
-    UDim2.fromOffset(0, 0),
-    UDim2.fromOffset(115, 35)
-)
-
-local ActivityClear = CreateButton(
-    ActivityPage,
-    "CLEAR",
-    UDim2.fromOffset(123, 0),
-    UDim2.fromOffset(75, 35)
-)
-
-local ActivityCopy = CreateButton(
-    ActivityPage,
-    "COPY",
-    UDim2.fromOffset(206, 0),
-    UDim2.fromOffset(75, 35)
-)
-
-local MovementToggle = CreateButton(
-    MovementPage,
-    "MOVEMENT: OFF",
-    UDim2.fromOffset(0, 0),
-    UDim2.fromOffset(115, 35)
-)
-
-local MovementClear = CreateButton(
-    MovementPage,
-    "CLEAR",
-    UDim2.fromOffset(123, 0),
-    UDim2.fromOffset(75, 35)
-)
-
-local MovementCopy = CreateButton(
-    MovementPage,
-    "COPY",
-    UDim2.fromOffset(206, 0),
-    UDim2.fromOffset(75, 35)
+		Locked = not Locked
+		LockButton.Text = Locked and "🔒" or "🔓"
+	end
 )
 
 --==================================================
--- LOG PANEL
+-- TERMINATE
 --==================================================
 
-local function CreatePanel(Parent, Position, Size)
+local function TerminateDashboard()
+	if Terminated then
+		return
+	end
 
-    local Panel = Instance.new("ScrollingFrame")
-    Panel.Size = Size
-    Panel.Position = Position
-    Panel.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    Panel.BorderSizePixel = 0
-    Panel.ScrollBarThickness = 5
-    Panel.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    Panel.CanvasSize = UDim2.new(0, 0, 0, 0)
-    Panel.ScrollingDirection = Enum.ScrollingDirection.Y
-    Panel.Active = true
-    Panel.ZIndex = 20
-    Panel.Parent = Parent
+	Terminated = true
 
-    Instance.new("UICorner", Panel).CornerRadius = UDim.new(0, 8)
+	DisconnectFlyJump()
 
-    local Padding = Instance.new("UIPadding")
-    Padding.PaddingTop = UDim.new(0, 7)
-    Padding.PaddingBottom = UDim.new(0, 7)
-    Padding.PaddingLeft = UDim.new(0, 7)
-    Padding.PaddingRight = UDim.new(0, 7)
-    Padding.Parent = Panel
+	for player, Data in pairs(ESPObjects) do
+		if Data.Highlight then
+			Data.Highlight:Destroy()
+		end
 
-    local Layout = Instance.new("UIListLayout")
-    Layout.SortOrder = Enum.SortOrder.LayoutOrder
-    Layout.Padding = UDim.new(0, 5)
-    Layout.Parent = Panel
+		if Data.Billboard then
+			Data.Billboard:Destroy()
+		end
+	end
 
-    return Panel
+	ESPObjects = {}
+
+	for _, connection in ipairs(Connections) do
+		if connection and connection.Connected then
+			connection:Disconnect()
+		end
+	end
+
+	Connections = {}
+
+	if ScreenGui then
+		ScreenGui:Destroy()
+	end
 end
 
-local ActivityList = CreatePanel(
-    ActivityPage,
-    UDim2.new(0, 0, 0, 45),
-    UDim2.new(0.48, -5, 1, -45)
+Connect(
+	TerminateButton.MouseButton1Click,
+	TerminateDashboard
 )
-
-local ActivityDetails = CreatePanel(
-    ActivityPage,
-    UDim2.new(0.48, 5, 0, 45),
-    UDim2.new(0.52, -5, 1, -45)
-)
-
-local MovementList = CreatePanel(
-    MovementPage,
-    UDim2.new(0, 0, 0, 45),
-    UDim2.new(0.48, -5, 1, -45)
-)
-
-local MovementDetails = CreatePanel(
-    MovementPage,
-    UDim2.new(0.48, 5, 0, 45),
-    UDim2.new(0.52, -5, 1, -45)
-)
-
---==================================================
--- HELPERS
---==================================================
-
-local function ClearPanel(Panel)
-
-    for _, Object in ipairs(Panel:GetChildren()) do
-
-        if not Object:IsA("UIListLayout")
-        and not Object:IsA("UIPadding") then
-
-            Object:Destroy()
-
-        end
-
-    end
-
-end
-
-local function SafePath(Object)
-
-    if not Object then
-        return "nil"
-    end
-
-    local Success, Result = pcall(function()
-        return Object:GetFullName()
-    end)
-
-    if Success then
-        return Result
-    end
-
-    return Object.Name
-end
-
-local function SafeValue(Object)
-
-    local Success, Value = pcall(function()
-        return Object.Value
-    end)
-
-    if not Success then
-        return nil
-    end
-
-    if typeof(Value) == "Instance" then
-
-        if Value then
-            return SafePath(Value)
-        end
-
-        return "nil"
-    end
-
-    return tostring(Value)
-end
-
-local function AddDetail(Panel, Text)
-
-    local Label = Instance.new("TextLabel")
-
-    Label.Size = UDim2.new(1, -5, 0, 20)
-    Label.AutomaticSize = Enum.AutomaticSize.Y
-    Label.BackgroundTransparency = 1
-    Label.Text = Text
-    Label.TextColor3 = Color3.fromRGB(220, 220, 220)
-    Label.TextSize = 12
-    Label.Font = Enum.Font.Code
-    Label.TextXAlignment = Enum.TextXAlignment.Left
-    Label.TextYAlignment = Enum.TextYAlignment.Top
-    Label.TextWrapped = true
-    Label.ZIndex = 25
-    Label.Parent = Panel
-
-end
-
---==================================================
--- DEEP INSPECTOR
---==================================================
-
-local function InspectObject(Object)
-
-    ClearPanel(ActivityDetails)
-
-    if not Object then
-
-        AddDetail(
-            ActivityDetails,
-            "No object selected."
-        )
-
-        return
-    end
-
-    AddDetail(
-        ActivityDetails,
-        "========== TARGET =========="
-    )
-
-    AddDetail(
-        ActivityDetails,
-        "Name: " .. Object.Name
-    )
-
-    AddDetail(
-        ActivityDetails,
-        "Class: " .. Object.ClassName
-    )
-
-    AddDetail(
-        ActivityDetails,
-        "Path: " .. SafePath(Object)
-    )
-
-    --==================================================
-    -- ANCESTORS
-    --==================================================
-
-    AddDetail(
-        ActivityDetails,
-        "\n========== ANCESTORS =========="
-    )
-
-    local Ancestor = Object.Parent
-
-    while Ancestor and Ancestor ~= game do
-
-        AddDetail(
-            ActivityDetails,
-            Ancestor.Name ..
-            " [" ..
-            Ancestor.ClassName ..
-            "]"
-        )
-
-        Ancestor = Ancestor.Parent
-
-    end
-
-    --==================================================
-    -- ATTRIBUTES
-    --==================================================
-
-    AddDetail(
-        ActivityDetails,
-        "\n========== ATTRIBUTES =========="
-    )
-
-    local Attributes = Object:GetAttributes()
-    local AttributeCount = 0
-
-    for Name, Value in pairs(Attributes) do
-
-        AttributeCount += 1
-
-        AddDetail(
-            ActivityDetails,
-            tostring(Name) ..
-            " = " ..
-            tostring(Value) ..
-            " [" ..
-            typeof(Value) ..
-            "]"
-        )
-
-    end
-
-    if AttributeCount == 0 then
-
-        AddDetail(
-            ActivityDetails,
-            "None"
-        )
-
-    end
-
-    --==================================================
-    -- DIRECT CHILDREN
-    --==================================================
-
-    AddDetail(
-        ActivityDetails,
-        "\n========== CHILDREN =========="
-    )
-
-    local Children = Object:GetChildren()
-
-    if #Children == 0 then
-
-        AddDetail(
-            ActivityDetails,
-            "None"
-        )
-
-    else
-
-        for _, Child in ipairs(Children) do
-
-            local Text =
-                Child.Name ..
-                " [" ..
-                Child.ClassName ..
-                "]"
-
-            if Child:IsA("ValueBase") then
-
-                Text =
-                    Text ..
-                    " = " ..
-                    SafeValue(Child)
-
-            end
-
-            AddDetail(
-                ActivityDetails,
-                Text
-            )
-
-        end
-
-    end
-
-    --==================================================
-    -- RECURSIVE VALUES
-    --==================================================
-
-    AddDetail(
-        ActivityDetails,
-        "\n========== ALL VALUES =========="
-    )
-
-    local ValueCount = 0
-
-    local function ScanValues(Parent, Depth)
-
-        if Depth > 10 then
-            return
-        end
-
-        for _, Child in ipairs(Parent:GetChildren()) do
-
-            if Child:IsA("ValueBase") then
-
-                ValueCount += 1
-
-                local Prefix =
-                    string.rep("  ", Depth)
-
-                AddDetail(
-                    ActivityDetails,
-
-                    Prefix ..
-                    Child.Name ..
-                    " [" ..
-                    Child.ClassName ..
-                    "] = " ..
-                    SafeValue(Child) ..
-
-                    "\n" ..
-                    Prefix ..
-                    "Path: " ..
-                    SafePath(Child)
-                )
-
-            end
-
-            ScanValues(
-                Child,
-                Depth + 1
-            )
-
-        end
-
-    end
-
-    pcall(function()
-        ScanValues(Object, 0)
-    end)
-
-    if ValueCount == 0 then
-
-        AddDetail(
-            ActivityDetails,
-            "None"
-        )
-
-    end
-
-    --==================================================
-    -- ALL DESCENDANTS
-    --==================================================
-
-    AddDetail(
-        ActivityDetails,
-        "\n========== DESCENDANTS =========="
-    )
-
-    local Descendants = Object:GetDescendants()
-
-    if #Descendants == 0 then
-
-        AddDetail(
-            ActivityDetails,
-            "None"
-        )
-
-    else
-
-        -- Prevent a gigantic UI from being generated
-        local Limit = math.min(
-            #Descendants,
-            300
-        )
-
-        for Index = 1, Limit do
-
-            local Child =
-                Descendants[Index]
-
-            local Text =
-                Child.Name ..
-                " [" ..
-                Child.ClassName ..
-                "]"
-
-            if Child:IsA("ValueBase") then
-
-                Text =
-                    Text ..
-                    " = " ..
-                    SafeValue(Child)
-
-            end
-
-            AddDetail(
-                ActivityDetails,
-                Text
-            )
-
-        end
-
-        if #Descendants > Limit then
-
-            AddDetail(
-                ActivityDetails,
-
-                "... " ..
-                tostring(
-                    #Descendants - Limit
-                ) ..
-                " more descendants ..."
-            )
-
-        end
-
-    end
-
-end
-
---==================================================
--- ACTIVITY DETAILS
---==================================================
-
-local function ShowActivity(Log)
-
-    if not Log then
-
-        ClearPanel(ActivityDetails)
-
-        AddDetail(
-            ActivityDetails,
-            "Tap an activity to inspect it."
-        )
-
-        return
-
-    end
-
-    InspectObject(Log.Object)
-
-    -- Put interaction info at the top by inserting
-    -- a small header isn't necessary; target data follows.
-    -- The event information is preserved in the log itself.
-
-end
-
---==================================================
--- MOVEMENT DETAILS
---==================================================
-
-local function ShowMovement(Log)
-
-    ClearPanel(MovementDetails)
-
-    if not Log then
-
-        AddDetail(
-            MovementDetails,
-            "Tap a movement event to inspect it."
-        )
-
-        return
-
-    end
-
-    AddDetail(
-        MovementDetails,
-        "========== MOVEMENT =========="
-    )
-
-    AddDetail(
-        MovementDetails,
-        "State: " .. Log.State
-    )
-
-    AddDetail(
-        MovementDetails,
-        "Time: " .. Log.Time
-    )
-
-    AddDetail(
-        MovementDetails,
-        "Humanoid: " .. Log.Humanoid
-    )
-
-    if LocalPlayer.Character then
-
-        AddDetail(
-            MovementDetails,
-            "Character: " ..
-            SafePath(
-                LocalPlayer.Character
-            )
-        )
-
-    end
-
-end
-
---==================================================
--- REFRESH ACTIVITY
---==================================================
-
-local function RefreshActivity()
-
-    ClearPanel(ActivityList)
-
-    for Index, Log in ipairs(ActivityLogs) do
-
-        local Button = Instance.new("TextButton")
-
-        Button.LayoutOrder = Index
-        Button.Size = UDim2.new(1, -5, 0, 55)
-        Button.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
-        Button.BorderSizePixel = 0
-
-        Button.Text =
-            "[" ..
-            Log.Time ..
-            "] " ..
-            Log.EventType ..
-            "\n" ..
-            Log.Name
-
-        Button.TextColor3 =
-            Color3.fromRGB(225, 225, 225)
-
-        Button.TextSize = 12
-        Button.Font = Enum.Font.Code
-        Button.TextXAlignment =
-            Enum.TextXAlignment.Left
-        Button.TextYAlignment =
-            Enum.TextYAlignment.Center
-        Button.TextWrapped = true
-
-        Button.ZIndex = 30
-        Button.Active = true
-        Button.AutoButtonColor = true
-
-        Button.Parent = ActivityList
-
-        Instance.new("UICorner", Button)
-            .CornerRadius = UDim.new(0, 5)
-
-        local Padding = Instance.new("UIPadding")
-        Padding.PaddingLeft = UDim.new(0, 8)
-        Padding.PaddingRight = UDim.new(0, 5)
-        Padding.Parent = Button
-
-        Button.MouseButton1Click:Connect(function()
-
-            ShowActivity(Log)
-
-        end)
-
-    end
-
-end
-
---==================================================
--- REFRESH MOVEMENT
---==================================================
-
-local function RefreshMovement()
-
-    ClearPanel(MovementList)
-
-    for Index, Log in ipairs(MovementLogs) do
-
-        local Button = Instance.new("TextButton")
-
-        Button.LayoutOrder = Index
-        Button.Size = UDim2.new(1, -5, 0, 35)
-        Button.BackgroundColor3 =
-            Color3.fromRGB(32, 32, 32)
-
-        Button.BorderSizePixel = 0
-
-        Button.Text =
-            "[" ..
-            Log.Time ..
-            "] " ..
-            Log.State
-
-        Button.TextColor3 =
-            Color3.fromRGB(225, 225, 225)
-
-        Button.TextSize = 12
-        Button.Font = Enum.Font.Code
-        Button.TextXAlignment =
-            Enum.TextXAlignment.Left
-
-        Button.ZIndex = 30
-        Button.Active = true
-
-        Button.Parent = MovementList
-
-        Instance.new("UICorner", Button)
-            .CornerRadius = UDim.new(0, 5)
-
-        local Padding = Instance.new("UIPadding")
-        Padding.PaddingLeft = UDim.new(0, 8)
-        Padding.Parent = Button
-
-        Button.MouseButton1Click:Connect(function()
-
-            ShowMovement(Log)
-
-        end)
-
-    end
-
-end
-
---==================================================
--- ACTIVITY LOGGER
---==================================================
-
-local function LogActivity(
-    EventType,
-    Object,
-    Details
-)
-
-    if not ActivityEnabled then
-        return
-    end
-
-    if not Object then
-        return
-    end
-
-    if Object == ScreenGui
-    or Object:IsDescendantOf(ScreenGui) then
-        return
-    end
-
-    local Log = {
-
-        Time = os.date("%H:%M:%S"),
-
-        EventType = EventType,
-
-        Name = Object.Name,
-
-        Class = Object.ClassName,
-
-        Path = SafePath(Object),
-
-        Details = Details or "",
-
-        Object = Object
-
-    }
-
-    table.insert(
-        ActivityLogs,
-        1,
-        Log
-    )
-
-    if #ActivityLogs > MAX_LOGS then
-        table.remove(ActivityLogs)
-    end
-
-    RefreshActivity()
-
-end
-
---==================================================
--- MOVEMENT LOGGER
---==================================================
-
-local function LogMovement(
-    State,
-    Humanoid
-)
-
-    if not MovementEnabled then
-        return
-    end
-
-    if State == LastMovement then
-        return
-    end
-
-    LastMovement = State
-
-    table.insert(
-        MovementLogs,
-        1,
-        {
-            State = State,
-            Time = os.date("%H:%M:%S"),
-            Humanoid =
-                Humanoid and
-                Humanoid.Name or
-                "nil"
-        }
-    )
-
-    if #MovementLogs > MAX_LOGS then
-        table.remove(MovementLogs)
-    end
-
-    RefreshMovement()
-
-end
-
---==================================================
--- CLICK DETECTORS
---==================================================
-
-local function MonitorClick(Detector)
-
-    if MonitoredClicks[Detector] then
-        return
-    end
-
-    MonitoredClicks[Detector] = true
-
-    Detector.MouseClick:Connect(function(Player)
-
-        if Player ~= LocalPlayer then
-            return
-        end
-
-        local Target = Detector.Parent
-
-        if not Target then
-            return
-        end
-
-        LogActivity(
-            "CLICK",
-            Target,
-            "Interaction: ClickDetector"
-        )
-
-    end)
-
-end
-
---==================================================
--- PROXIMITY PROMPTS
---==================================================
-
-local function MonitorPrompt(Prompt)
-
-    if MonitoredPrompts[Prompt] then
-        return
-    end
-
-    MonitoredPrompts[Prompt] = true
-
-    Prompt.Triggered:Connect(function(Player)
-
-        if Player ~= LocalPlayer then
-            return
-        end
-
-        local Target = Prompt.Parent
-
-        if not Target then
-            return
-        end
-
-        local Details =
-            "Interaction: ProximityPrompt"
-
-        if Prompt.ActionText ~= "" then
-
-            Details =
-                Details ..
-                "\nActionText: " ..
-                Prompt.ActionText
-
-        end
-
-        if Prompt.ObjectText ~= "" then
-
-            Details =
-                Details ..
-                "\nObjectText: " ..
-                Prompt.ObjectText
-
-        end
-
-        LogActivity(
-            "PROMPT",
-            Target,
-            Details
-        )
-
-    end)
-
-end
-
---==================================================
--- TOOLS
---==================================================
-
-local function MonitorTool(Tool)
-
-    if not Tool:IsA("Tool") then
-        return
-    end
-
-    if MonitoredTools[Tool] then
-        return
-    end
-
-    MonitoredTools[Tool] = true
-
-    Tool.Activated:Connect(function()
-
-        LogActivity(
-            "TOOL ACTIVATED",
-            Tool,
-            "Interaction: Tool.Activated"
-        )
-
-    end)
-
-end
-
---==================================================
--- GAME GUI
---==================================================
-
-local function MonitorGuiButton(Button)
-
-    if not Button:IsA("GuiButton") then
-        return
-    end
-
-    if Button:IsDescendantOf(ScreenGui) then
-        return
-    end
-
-    if MonitoredButtons[Button] then
-        return
-    end
-
-    MonitoredButtons[Button] = true
-
-    Button.Activated:Connect(function()
-
-        LogActivity(
-            "GUI INTERACTION",
-            Button,
-            "Interaction: GuiButton.Activated"
-        )
-
-    end)
-
-end
-
---==================================================
--- INITIAL SCAN
---==================================================
-
-for _, Object in ipairs(
-    Workspace:GetDescendants()
-) do
-
-    if Object:IsA("ClickDetector") then
-
-        MonitorClick(Object)
-
-    elseif Object:IsA("ProximityPrompt") then
-
-        MonitorPrompt(Object)
-
-    end
-
-end
-
-for _, Object in ipairs(
-    PlayerGui:GetDescendants()
-) do
-
-    if Object:IsA("GuiButton") then
-
-        MonitorGuiButton(Object)
-
-    end
-
-end
-
---==================================================
--- NEW OBJECTS
---==================================================
-
-Workspace.DescendantAdded:Connect(function(Object)
-
-    if Object:IsA("ClickDetector") then
-
-        MonitorClick(Object)
-
-    elseif Object:IsA("ProximityPrompt") then
-
-        MonitorPrompt(Object)
-
-    end
-
-end)
-
-PlayerGui.DescendantAdded:Connect(function(Object)
-
-    if Object:IsA("GuiButton") then
-
-        MonitorGuiButton(Object)
-
-    end
-
-end)
-
---==================================================
--- TOOL SCAN
---==================================================
-
-local function ScanTools()
-
-    local Backpack =
-        LocalPlayer:FindFirstChildOfClass(
-            "Backpack"
-        )
-
-    if Backpack then
-
-        for _, Tool in ipairs(
-            Backpack:GetChildren()
-        ) do
-
-            MonitorTool(Tool)
-
-        end
-
-    end
-
-    if LocalPlayer.Character then
-
-        for _, Tool in ipairs(
-            LocalPlayer.Character:GetChildren()
-        ) do
-
-            MonitorTool(Tool)
-
-        end
-
-    end
-
-end
-
-local function MonitorToolContainer(Container)
-
-    if not Container then
-        return
-    end
-
-    Container.ChildAdded:Connect(function(Object)
-
-        if Object:IsA("Tool") then
-            MonitorTool(Object)
-        end
-
-    end)
-
-end
-
-local Backpack =
-    LocalPlayer:FindFirstChildOfClass(
-        "Backpack"
-    )
-
-if Backpack then
-    MonitorToolContainer(Backpack)
-end
-
-LocalPlayer.CharacterAdded:Connect(function(Character)
-
-    MonitorToolContainer(Character)
-
-    task.wait(0.2)
-
-    ScanTools()
-
-end)
-
-ScanTools()
-
---==================================================
--- MOVEMENT
---==================================================
-
-local function SetupMovement(Character)
-
-    local Humanoid =
-        Character:WaitForChild("Humanoid")
-
-    Humanoid.StateChanged:Connect(
-        function(_, NewState)
-
-            if NewState ==
-                Enum.HumanoidStateType.Jumping then
-
-                LogMovement(
-                    "JUMPING",
-                    Humanoid
-                )
-
-            elseif NewState ==
-                Enum.HumanoidStateType.Freefall then
-
-                LogMovement(
-                    "FALLING",
-                    Humanoid
-                )
-
-            elseif NewState ==
-                Enum.HumanoidStateType.Landed then
-
-                LogMovement(
-                    "LANDED",
-                    Humanoid
-                )
-
-            elseif NewState ==
-                Enum.HumanoidStateType.Climbing then
-
-                LogMovement(
-                    "CLIMBING",
-                    Humanoid
-                )
-
-            elseif NewState ==
-                Enum.HumanoidStateType.Swimming then
-
-                LogMovement(
-                    "SWIMMING",
-                    Humanoid
-                )
-
-            elseif NewState ==
-                Enum.HumanoidStateType.Seated then
-
-                LogMovement(
-                    "SEATED",
-                    Humanoid
-                )
-
-            elseif NewState ==
-                Enum.HumanoidStateType.Running
-            or NewState ==
-                Enum.HumanoidStateType.RunningNoPhysics then
-
-                LogMovement(
-                    "RUNNING",
-                    Humanoid
-                )
-
-            end
-
-        end
-    )
-
-end
-
-if LocalPlayer.Character then
-    SetupMovement(LocalPlayer.Character)
-end
-
-LocalPlayer.CharacterAdded:Connect(function(Character)
-
-    LastMovement = nil
-
-    SetupMovement(Character)
-
-end)
-
---==================================================
--- TOGGLES
---==================================================
-
-ActivityToggle.MouseButton1Click:Connect(function()
-
-    ActivityEnabled = not ActivityEnabled
-
-    if ActivityEnabled then
-
-        ActivityToggle.Text =
-            "ACTIVITY: ON"
-
-        ActivityToggle.BackgroundColor3 =
-            Color3.fromRGB(40, 120, 60)
-
-    else
-
-        ActivityToggle.Text =
-            "ACTIVITY: OFF"
-
-        ActivityToggle.BackgroundColor3 =
-            Color3.fromRGB(120, 40, 40)
-
-    end
-
-end)
-
-MovementToggle.MouseButton1Click:Connect(function()
-
-    MovementEnabled = not MovementEnabled
-
-    if MovementEnabled then
-
-        MovementToggle.Text =
-            "MOVEMENT: ON"
-
-        MovementToggle.BackgroundColor3 =
-            Color3.fromRGB(40, 120, 60)
-
-    else
-
-        MovementToggle.Text =
-            "MOVEMENT: OFF"
-
-        MovementToggle.BackgroundColor3 =
-            Color3.fromRGB(120, 40, 40)
-
-    end
-
-end)
-
---==================================================
--- CLEAR
---==================================================
-
-ActivityClear.MouseButton1Click:Connect(function()
-
-    table.clear(ActivityLogs)
-
-    RefreshActivity()
-
-    ClearPanel(ActivityDetails)
-
-    AddDetail(
-        ActivityDetails,
-        "Tap an activity to inspect it."
-    )
-
-end)
-
-MovementClear.MouseButton1Click:Connect(function()
-
-    table.clear(MovementLogs)
-
-    LastMovement = nil
-
-    RefreshMovement()
-
-    ClearPanel(MovementDetails)
-
-    AddDetail(
-        MovementDetails,
-        "Tap a movement event to inspect it."
-    )
-
-end)
-
---==================================================
--- COPY
---==================================================
-
-ActivityCopy.MouseButton1Click:Connect(function()
-
-    if not setclipboard then
-        return
-    end
-
-    local Output = {}
-
-    for _, Log in ipairs(ActivityLogs) do
-
-        table.insert(
-            Output,
-
-            "[" ..
-            Log.Time ..
-            "] " ..
-            Log.EventType ..
-
-            "\nName: " ..
-            Log.Name ..
-
-            "\nClass: " ..
-            Log.Class ..
-
-            "\nPath: " ..
-            Log.Path ..
-
-            (
-                Log.Details ~= ""
-                and
-                "\nDetails: " ..
-                Log.Details
-                or
-                ""
-            )
-
-        )
-
-    end
-
-    setclipboard(
-        table.concat(
-            Output,
-            "\n\n"
-        )
-    )
-
-end)
-
-MovementCopy.MouseButton1Click:Connect(function()
-
-    if not setclipboard then
-        return
-    end
-
-    local Output = {}
-
-    for _, Log in ipairs(MovementLogs) do
-
-        table.insert(
-            Output,
-
-            "[" ..
-            Log.Time ..
-            "] MOVEMENT: " ..
-            Log.State
-
-        )
-
-    end
-
-    setclipboard(
-        table.concat(
-            Output,
-            "\n\n"
-        )
-    )
-
-end)
-
---==================================================
--- TABS
---==================================================
-
-ActivityTab.MouseButton1Click:Connect(function()
-
-    ActivityPage.Visible = true
-    MovementPage.Visible = false
-
-end)
-
-MovementTab.MouseButton1Click:Connect(function()
-
-    ActivityPage.Visible = false
-    MovementPage.Visible = true
-
-end)
 
 --==================================================
 -- Y BUTTON
 --==================================================
 
-YButton.MouseButton1Click:Connect(function()
+Connect(
+	YButton.MouseButton1Click,
+	function()
+		if Terminated then
+			return
+		end
 
-    Dashboard.Visible =
-        not Dashboard.Visible
-
-end)
-
---==================================================
--- CLOSE
---==================================================
-
-CloseButton.MouseButton1Click:Connect(function()
-
-    Dashboard.Visible = false
-
-end)
-
---==================================================
--- LOCK
---==================================================
-
-LockButton.MouseButton1Click:Connect(function()
-
-    Locked = not Locked
-
-    if Locked then
-        LockButton.Text = "🔒"
-    else
-        LockButton.Text = "🔓"
-    end
-
-end)
-
---==================================================
--- DRAGGING
---==================================================
-
-local function MakeDraggable(Object, RespectLock)
-
-    local Dragging = false
-    local DragStart
-    local StartPosition
-
-    Object.InputBegan:Connect(function(Input)
-
-        if RespectLock and Locked then
-            return
-        end
-
-        if Input.UserInputType ==
-            Enum.UserInputType.MouseButton1
-        or Input.UserInputType ==
-            Enum.UserInputType.Touch then
-
-            Dragging = true
-            DragStart = Input.Position
-            StartPosition = Object.Position
-
-            Input.Changed:Connect(function()
-
-                if Input.UserInputState ==
-                    Enum.UserInputState.End then
-
-                    Dragging = false
-
-                end
-
-            end)
-
-        end
-
-    end)
-
-    UserInputService.InputChanged:Connect(function(Input)
-
-        if not Dragging then
-            return
-        end
-
-        if Input.UserInputType ~=
-            Enum.UserInputType.MouseMovement
-        and Input.UserInputType ~=
-            Enum.UserInputType.Touch then
-
-            return
-
-        end
-
-        local Delta =
-            Input.Position - DragStart
-
-        Object.Position = UDim2.new(
-
-            StartPosition.X.Scale,
-            StartPosition.X.Offset + Delta.X,
-
-            StartPosition.Y.Scale,
-            StartPosition.Y.Offset + Delta.Y
-
-        )
-
-    end)
-
-end
-
-MakeDraggable(TitleBar, true)
-MakeDraggable(YButton, false)
-
---==================================================
--- INITIAL MESSAGE
---==================================================
-
-ClearPanel(ActivityDetails)
-AddDetail(
-    ActivityDetails,
-    "Tap an activity to inspect it."
+		Dashboard.Visible = not Dashboard.Visible
+	end
 )
 
-ClearPanel(MovementDetails)
-AddDetail(
-    MovementDetails,
-    "Tap a movement event to inspect it."
+--==================================================
+-- DRAG Y BUTTON
+--==================================================
+
+Connect(
+	YButton.InputBegan,
+	function(input)
+		if Locked or Terminated then
+			return
+		end
+
+		if input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch then
+
+			DraggingY = true
+			DragStartY = input.Position
+			StartPosY = YButton.Position
+
+			Connect(
+				input.Changed,
+				function()
+					if input.UserInputState == Enum.UserInputState.End then
+						DraggingY = false
+					end
+				end
+			)
+		end
+	end
 )
 
-print("YDashboard loaded.")
+Connect(
+	UserInputService.InputChanged,
+	function(input)
+		if not DraggingY or Locked or Terminated then
+			return
+		end
+
+		if input.UserInputType == Enum.UserInputType.MouseMovement
+			or input.UserInputType == Enum.UserInputType.Touch then
+
+			local Delta = input.Position - DragStartY
+
+			YButton.Position = UDim2.new(
+				StartPosY.X.Scale,
+				StartPosY.X.Offset + Delta.X,
+				StartPosY.Y.Scale,
+				StartPosY.Y.Offset + Delta.Y
+			)
+
+			LockButton.Position = UDim2.new(
+				YButton.Position.X.Scale,
+				YButton.Position.X.Offset + 60,
+				YButton.Position.Y.Scale,
+				YButton.Position.Y.Offset + 11
+			)
+		end
+	end
+)
+
+--==================================================
+-- DRAG DASHBOARD
+--==================================================
+
+Connect(
+	Title.InputBegan,
+	function(input)
+		if Terminated then
+			return
+		end
+
+		if input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch then
+
+			DraggingDashboard = true
+			DragStartDashboard = input.Position
+			StartDashboardPosition = Dashboard.Position
+
+			Connect(
+				input.Changed,
+				function()
+					if input.UserInputState == Enum.UserInputState.End then
+						DraggingDashboard = false
+					end
+				end
+			)
+		end
+	end
+)
+
+Connect(
+	UserInputService.InputChanged,
+	function(input)
+		if not DraggingDashboard or Terminated then
+			return
+		end
+
+		if input.UserInputType == Enum.UserInputType.MouseMovement
+			or input.UserInputType == Enum.UserInputType.Touch then
+
+			local Delta = input.Position - DragStartDashboard
+
+			Dashboard.Position = UDim2.new(
+				StartDashboardPosition.X.Scale,
+				StartDashboardPosition.X.Offset + Delta.X,
+				StartDashboardPosition.Y.Scale,
+				StartDashboardPosition.Y.Offset + Delta.Y
+			)
+		end
+	end
+)
