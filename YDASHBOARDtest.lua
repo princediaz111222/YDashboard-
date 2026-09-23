@@ -5,6 +5,7 @@ local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -15,7 +16,9 @@ local LocalPlayer = Players.LocalPlayer
 --// Melee Aura
 local MeleeAura = false
 local MeleeRange = 15
-local MeleeConnection
+
+local MeleeAuraRemote =
+	ReplicatedStorage:WaitForChild("MeleeAuraRemote")
 
 local Locked = false
 local Terminated = false
@@ -26,7 +29,6 @@ local FlyJumpEnabled = false
 local PlayerESPEnabled = false
 
 local WalkSpeedValue = 16
-local LastESPRefresh = 0
 
 local Connections = {}
 local ESPObjects = {}
@@ -469,10 +471,17 @@ CreateSlider(
 	"Melee Range",
 	UDim2.new(0, 285, 0, 180),
 	1,
-	1000,
+	100,
 	MeleeRange,
 	function(Value)
 		MeleeRange = Value
+
+		if MeleeAura then
+			MeleeAuraRemote:FireServer(
+				"Range",
+				MeleeRange
+			)
+		end
 	end
 )
 
@@ -487,7 +496,8 @@ local TerminateButton = CreateButton(
 	UDim2.new(0.5, -125, 1, -55)
 )
 
-TerminateButton.BackgroundColor3 = Color3.fromRGB(120, 35, 35)
+TerminateButton.BackgroundColor3 =
+	Color3.fromRGB(120, 35, 35)
 
 --==================================================
 -- TAB SWITCHING
@@ -866,16 +876,11 @@ ESPRefreshConnection = Connect(
 			return
 		end
 
-		local now = os.clock()
-		if now - LastESPRefresh >= 1 then
-			LastESPRefresh = now
+		UpdateESP()
 
-			UpdateESP()
-
-			for player, Data in pairs(ESPObjects) do
-				if Data.UpdateInfo then
-					Data.UpdateInfo()
-				end
+		for player, Data in pairs(ESPObjects) do
+			if Data.UpdateInfo then
+				Data.UpdateInfo()
 			end
 		end
 	end
@@ -947,109 +952,27 @@ Connect(
 -- MELEE AURA
 --==================================================
 
-local function StopMeleeAura()
-	if MeleeConnection then
-		MeleeConnection:Disconnect()
-		MeleeConnection = nil
-	end
-end
-
-local function StartMeleeAura()
-	StopMeleeAura()
-
-	MeleeConnection =
-		RunService.Heartbeat:Connect(
-			function()
-				if Terminated or not MeleeAura then
-					return
-				end
-
-				local Character =
-					LocalPlayer.Character
-
-				if not Character then
-					return
-				end
-
-				local RootPart =
-					Character:FindFirstChild(
-						"HumanoidRootPart"
-					)
-
-				if not RootPart then
-					return
-				end
-
-				local Params = OverlapParams.new()
-
-				Params.FilterType =
-					Enum.RaycastFilterType.Exclude
-
-				Params.FilterDescendantsInstances = {
-					Character
-				}
-
-				local Parts =
-					workspace:GetPartBoundsInRadius(
-						RootPart.Position,
-						MeleeRange,
-						Params
-					)
-
-				local Targets = {}
-
-				for _, Part in ipairs(Parts) do
-					local Model =
-						Part:FindFirstAncestorOfClass(
-							"Model"
-						)
-
-					if Model and not Targets[Model] then
-						local Humanoid =
-							Model:FindFirstChildOfClass(
-								"Humanoid"
-							)
-
-						if Humanoid
-							and Humanoid.Health > 0 then
-
-							Targets[Model] = Humanoid
-						end
-					end
-				end
-
-				-- Targets contains every nearby
-				-- damageable model.
-				--
-				-- This detection does NOT directly
-				-- apply damage. Your weapon's normal
-				-- server-side damage system should
-				-- handle the actual hit.
-			end
-		)
-end
-
 local function SetMeleeAura(enabled)
+	if Terminated then
+		return
+	end
+
 	MeleeAura = enabled
 
 	MeleeAuraButton.Text =
 		"Melee Aura: "
 		.. (MeleeAura and "ON" or "OFF")
 
-	if MeleeAura then
-		StartMeleeAura()
-	else
-		StopMeleeAura()
-	end
+	MeleeAuraRemote:FireServer(
+		"Toggle",
+		MeleeAura,
+		MeleeRange
+	)
 end
 
 Connect(
 	MeleeAuraButton.MouseButton1Click,
 	function()
-		if Terminated then
-			return
-		end
-
 		SetMeleeAura(not MeleeAura)
 	end
 )
@@ -1117,9 +1040,6 @@ local function TerminateDashboard()
 	end
 
 	Terminated = true
-
-	DisconnectFlyJump()
-	StopMeleeAura()
 
 	for player, Data in pairs(ESPObjects) do
 		if Data.Highlight then
