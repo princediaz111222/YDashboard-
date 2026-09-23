@@ -26,6 +26,7 @@ local FlyJumpEnabled = false
 local PlayerESPEnabled = false
 
 local WalkSpeedValue = 16
+local LastESPRefresh = 0
 
 local Connections = {}
 local ESPObjects = {}
@@ -865,12 +866,9 @@ ESPRefreshConnection = Connect(
 			return
 		end
 
-		if not ESPRefreshConnection.LastRefresh
-			or os.clock()
-			- ESPRefreshConnection.LastRefresh >= 1 then
-
-			ESPRefreshConnection.LastRefresh =
-				os.clock()
+		local now = os.clock()
+		if now - LastESPRefresh >= 1 then
+			LastESPRefresh = now
 
 			UpdateESP()
 
