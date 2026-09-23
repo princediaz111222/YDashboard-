@@ -213,6 +213,113 @@ local function CreateSwitch(parent, name, text, position)
 	)
 end
 
+
+local function CreateSlider(parent, name, text, position, minValue, maxValue, defaultValue, callback)
+	local Frame = Instance.new("Frame")
+	Frame.Name = name
+	Frame.Size = UDim2.new(0, 250, 0, 55)
+	Frame.Position = position
+	Frame.BackgroundTransparency = 1
+	Frame.Parent = parent
+
+	local Label = Instance.new("TextLabel")
+	Label.Size = UDim2.new(1, 0, 0, 20)
+	Label.BackgroundTransparency = 1
+	Label.Text = text .. ": " .. defaultValue
+	Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+	Label.TextSize = 14
+	Label.Font = Enum.Font.GothamBold
+	Label.TextXAlignment = Enum.TextXAlignment.Left
+	Label.Parent = Frame
+
+	local SliderBar = Instance.new("TextButton")
+	SliderBar.Size = UDim2.new(1, 0, 0, 10)
+	SliderBar.Position = UDim2.new(0, 0, 0, 30)
+	SliderBar.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+	SliderBar.Text = ""
+	SliderBar.AutoButtonColor = false
+	SliderBar.Parent = Frame
+
+	local SliderCorner = Instance.new("UICorner")
+	SliderCorner.CornerRadius = UDim.new(1, 0)
+	SliderCorner.Parent = SliderBar
+
+	local Knob = Instance.new("Frame")
+	Knob.Size = UDim2.new(0, 14, 0, 14)
+	Knob.AnchorPoint = Vector2.new(0.5, 0.5)
+	Knob.Position = UDim2.new(
+		(defaultValue - minValue) / (maxValue - minValue),
+		0,
+		0.5,
+		0
+	)
+	Knob.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
+	Knob.Parent = SliderBar
+
+	local KnobCorner = Instance.new("UICorner")
+	KnobCorner.CornerRadius = UDim.new(1, 0)
+	KnobCorner.Parent = Knob
+
+	local Dragging = false
+
+	local function UpdateSlider(inputX)
+		local Percent = math.clamp(
+			(inputX - SliderBar.AbsolutePosition.X)
+				/ SliderBar.AbsoluteSize.X,
+			0,
+			1
+		)
+
+		local Value = math.floor(
+			minValue + (maxValue - minValue) * Percent
+		)
+
+		Knob.Position = UDim2.new(Percent, 0, 0.5, 0)
+		Label.Text = text .. ": " .. Value
+
+		callback(Value)
+	end
+
+	Connect(
+		SliderBar.InputBegan,
+		function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1
+				or input.UserInputType == Enum.UserInputType.Touch then
+
+				Dragging = true
+				UpdateSlider(input.Position.X)
+			end
+		end
+	)
+
+	Connect(
+		UserInputService.InputChanged,
+		function(input)
+			if not Dragging then
+				return
+			end
+
+			if input.UserInputType == Enum.UserInputType.MouseMovement
+				or input.UserInputType == Enum.UserInputType.Touch then
+
+				UpdateSlider(input.Position.X)
+			end
+		end
+	)
+
+	Connect(
+		UserInputService.InputEnded,
+		function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1
+				or input.UserInputType == Enum.UserInputType.Touch then
+
+				Dragging = false
+			end
+		end
+	)
+
+	callback(defaultValue)
+end
 --==================================================
 -- EXECUTE BUTTONS
 --==================================================
@@ -765,6 +872,29 @@ Connect(
 	end
 )
 
+--==================================================
+-- MELEE AURA
+--==================================================
+
+local MeleeAuraButton = CreateSwitch(
+	ToolsFrame,
+	"MeleeAuraButton",
+	"Melee Aura",
+	UDim2.new(0, 15, 0, 185)
+)
+
+local MeleeRangeSlider = CreateSlider(
+	ToolsFrame,
+	"MeleeRangeSlider",
+	"Melee Range",
+	UDim2.new(0, 285, 0, 180),
+	0,
+	1000,
+	15,
+	function(Value)
+		MeleeRange = Value
+	end
+)
 --==================================================
 -- LOCK
 --==================================================
