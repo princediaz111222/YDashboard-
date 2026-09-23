@@ -11,6 +11,7 @@ local LocalPlayer = Players.LocalPlayer
 --==================================================
 -- VARIABLES
 --==================================================
+
 --// Melee Aura
 local MeleeAura = false
 local MeleeRange = 15
@@ -39,6 +40,10 @@ local StartDashboardPosition
 
 local FlyJumpConnection
 local ESPRefreshConnection
+
+--==================================================
+-- CONNECTION HANDLER
+--==================================================
 
 local function Connect(signal, callback)
 	if Terminated then
@@ -187,6 +192,7 @@ ToolsFrame.Parent = Dashboard
 
 local function CreateButton(parent, name, text, position)
 	local Button = Instance.new("TextButton")
+
 	Button.Name = name
 	Button.Size = UDim2.new(0, 250, 0, 42)
 	Button.Position = position
@@ -213,9 +219,22 @@ local function CreateSwitch(parent, name, text, position)
 	)
 end
 
+--==================================================
+-- SLIDER FACTORY
+--==================================================
 
-local function CreateSlider(parent, name, text, position, minValue, maxValue, defaultValue, callback)
+local function CreateSlider(
+	parent,
+	name,
+	text,
+	position,
+	minValue,
+	maxValue,
+	defaultValue,
+	callback
+)
 	local Frame = Instance.new("Frame")
+
 	Frame.Name = name
 	Frame.Size = UDim2.new(0, 250, 0, 55)
 	Frame.Position = position
@@ -223,6 +242,7 @@ local function CreateSlider(parent, name, text, position, minValue, maxValue, de
 	Frame.Parent = parent
 
 	local Label = Instance.new("TextLabel")
+
 	Label.Size = UDim2.new(1, 0, 0, 20)
 	Label.BackgroundTransparency = 1
 	Label.Text = text .. ": " .. defaultValue
@@ -233,6 +253,7 @@ local function CreateSlider(parent, name, text, position, minValue, maxValue, de
 	Label.Parent = Frame
 
 	local SliderBar = Instance.new("TextButton")
+
 	SliderBar.Size = UDim2.new(1, 0, 0, 10)
 	SliderBar.Position = UDim2.new(0, 0, 0, 30)
 	SliderBar.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
@@ -245,14 +266,17 @@ local function CreateSlider(parent, name, text, position, minValue, maxValue, de
 	SliderCorner.Parent = SliderBar
 
 	local Knob = Instance.new("Frame")
+
 	Knob.Size = UDim2.new(0, 14, 0, 14)
 	Knob.AnchorPoint = Vector2.new(0.5, 0.5)
+
 	Knob.Position = UDim2.new(
 		(defaultValue - minValue) / (maxValue - minValue),
 		0,
 		0.5,
 		0
 	)
+
 	Knob.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
 	Knob.Parent = SliderBar
 
@@ -271,10 +295,17 @@ local function CreateSlider(parent, name, text, position, minValue, maxValue, de
 		)
 
 		local Value = math.floor(
-			minValue + (maxValue - minValue) * Percent
+			minValue
+			+ (maxValue - minValue) * Percent
 		)
 
-		Knob.Position = UDim2.new(Percent, 0, 0.5, 0)
+		Knob.Position = UDim2.new(
+			Percent,
+			0,
+			0.5,
+			0
+		)
+
 		Label.Text = text .. ": " .. Value
 
 		callback(Value)
@@ -320,6 +351,7 @@ local function CreateSlider(parent, name, text, position, minValue, maxValue, de
 
 	callback(defaultValue)
 end
+
 --==================================================
 -- EXECUTE BUTTONS
 --==================================================
@@ -379,6 +411,7 @@ local WalkSpeedButton = CreateSwitch(
 )
 
 local WalkSpeedBox = Instance.new("TextBox")
+
 WalkSpeedBox.Name = "WalkSpeedBox"
 WalkSpeedBox.Size = UDim2.new(0, 250, 0, 42)
 WalkSpeedBox.Position = UDim2.new(0, 285, 0, 75)
@@ -419,6 +452,30 @@ local PlayerESPButton = CreateSwitch(
 )
 
 --==================================================
+-- MELEE AURA
+--==================================================
+
+local MeleeAuraButton = CreateSwitch(
+	ToolsFrame,
+	"MeleeAuraButton",
+	"Melee Aura",
+	UDim2.new(0, 15, 0, 185)
+)
+
+CreateSlider(
+	ToolsFrame,
+	"MeleeRangeSlider",
+	"Melee Range",
+	UDim2.new(0, 285, 0, 180),
+	1,
+	1000,
+	MeleeRange,
+	function(Value)
+		MeleeRange = Value
+	end
+)
+
+--==================================================
 -- TERMINATE
 --==================================================
 
@@ -441,8 +498,11 @@ Connect(
 		ExecuteFrame.Visible = true
 		ToolsFrame.Visible = false
 
-		ExecuteTab.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-		ToolsTab.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+		ExecuteTab.BackgroundColor3 =
+			Color3.fromRGB(70, 70, 70)
+
+		ToolsTab.BackgroundColor3 =
+			Color3.fromRGB(45, 45, 45)
 	end
 )
 
@@ -452,8 +512,11 @@ Connect(
 		ExecuteFrame.Visible = false
 		ToolsFrame.Visible = true
 
-		ExecuteTab.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-		ToolsTab.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+		ExecuteTab.BackgroundColor3 =
+			Color3.fromRGB(45, 45, 45)
+
+		ToolsTab.BackgroundColor3 =
+			Color3.fromRGB(70, 70, 70)
 	end
 )
 
@@ -464,21 +527,33 @@ Connect(
 Connect(
 	ExecuteButton.MouseButton1Click,
 	function()
-		loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/73260ee6e0b3892aa700a13e1fd7d3c9.lua"))()
+		loadstring(
+			game:HttpGet(
+				"https://api.luarmor.net/files/v4/loaders/73260ee6e0b3892aa700a13e1fd7d3c9.lua"
+			)
+		)()
 	end
 )
 
 Connect(
 	ExecuteButton2.MouseButton1Click,
 	function()
-		loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/4595fe31a5f7a8b4f4dd7071f3119ef7.lua"))()
+		loadstring(
+			game:HttpGet(
+				"https://api.luarmor.net/files/v4/loaders/4595fe31a5f7a8b4f4dd7071f3119ef7.lua"
+			)
+		)()
 	end
 )
 
 Connect(
 	ExecuteButton3.MouseButton1Click,
 	function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/Dev-GravityHub/BloxFruit/main/MainV3.lua"))()
+		loadstring(
+			game:HttpGet(
+				"https://raw.githubusercontent.com/Dev-GravityHub/BloxFruit/main/MainV3.lua"
+			)
+		)()
 	end
 )
 
@@ -498,7 +573,8 @@ local function SetInstantInteraction(enabled)
 	end
 
 	InstantInteractButton.Text =
-		"Instant Interaction: " .. (enabled and "ON" or "OFF")
+		"Instant Interaction: "
+		.. (enabled and "ON" or "OFF")
 end
 
 Connect(
@@ -529,7 +605,8 @@ Connect(
 		if value then
 			WalkSpeedValue = value
 		else
-			WalkSpeedBox.Text = tostring(WalkSpeedValue)
+			WalkSpeedBox.Text =
+				tostring(WalkSpeedValue)
 		end
 	end
 )
@@ -540,7 +617,8 @@ Connect(
 		WalkSpeedEnabled = not WalkSpeedEnabled
 
 		WalkSpeedButton.Text =
-			"WalkSpeed: " .. (WalkSpeedEnabled and "ON" or "OFF")
+			"WalkSpeed: "
+			.. (WalkSpeedEnabled and "ON" or "OFF")
 	end
 )
 
@@ -557,7 +635,8 @@ Connect(
 			return
 		end
 
-		local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+		local Humanoid =
+			Character:FindFirstChildOfClass("Humanoid")
 
 		if Humanoid then
 			Humanoid.WalkSpeed = WalkSpeedValue
@@ -583,40 +662,49 @@ local function SetupFlyJump()
 		return
 	end
 
-	FlyJumpConnection = UserInputService.JumpRequest:Connect(
-		function()
-			if Terminated or not FlyJumpEnabled then
-				return
+	FlyJumpConnection =
+		UserInputService.JumpRequest:Connect(
+			function()
+				if Terminated or not FlyJumpEnabled then
+					return
+				end
+
+				local Character =
+					LocalPlayer.Character
+
+				if not Character then
+					return
+				end
+
+				local Humanoid =
+					Character:FindFirstChildOfClass(
+						"Humanoid"
+					)
+
+				local RootPart =
+					Character:FindFirstChild(
+						"HumanoidRootPart"
+					)
+
+				if not Humanoid or not RootPart then
+					return
+				end
+
+				Humanoid:ChangeState(
+					Enum.HumanoidStateType.Jumping
+				)
+
+				local CurrentVelocity =
+					RootPart.AssemblyLinearVelocity
+
+				RootPart.AssemblyLinearVelocity =
+					Vector3.new(
+						CurrentVelocity.X,
+						60,
+						CurrentVelocity.Z
+					)
 			end
-
-			local Character = LocalPlayer.Character
-
-			if not Character then
-				return
-			end
-
-			local Humanoid =
-				Character:FindFirstChildOfClass("Humanoid")
-
-			local RootPart =
-				Character:FindFirstChild("HumanoidRootPart")
-
-			if not Humanoid or not RootPart then
-				return
-			end
-
-			Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-
-			local CurrentVelocity =
-				RootPart.AssemblyLinearVelocity
-
-			RootPart.AssemblyLinearVelocity = Vector3.new(
-				CurrentVelocity.X,
-				60,
-				CurrentVelocity.Z
-			)
-		end
-	)
+		)
 end
 
 Connect(
@@ -625,7 +713,8 @@ Connect(
 		FlyJumpEnabled = not FlyJumpEnabled
 
 		FlyJumpButton.Text =
-			"FlyJump: " .. (FlyJumpEnabled and "ON" or "OFF")
+			"FlyJump: "
+			.. (FlyJumpEnabled and "ON" or "OFF")
 
 		if FlyJumpEnabled then
 			SetupFlyJump()
@@ -701,13 +790,17 @@ local function AddESP(player)
 	InfoLabel.Name = "PlayerInfo"
 	InfoLabel.Size = UDim2.new(1, 0, 1, 0)
 	InfoLabel.BackgroundTransparency = 1
-	InfoLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	InfoLabel.TextColor3 =
+		Color3.fromRGB(255, 255, 255)
+
 	InfoLabel.TextStrokeTransparency = 0
 	InfoLabel.TextScaled = false
 	InfoLabel.TextSize = 14
 	InfoLabel.Font = Enum.Font.GothamBold
-	InfoLabel.TextXAlignment = Enum.TextXAlignment.Center
-	InfoLabel.TextYAlignment = Enum.TextYAlignment.Center
+	InfoLabel.TextXAlignment =
+		Enum.TextXAlignment.Center
+	InfoLabel.TextYAlignment =
+		Enum.TextYAlignment.Center
 	InfoLabel.Parent = Billboard
 
 	local function UpdateInfo()
@@ -715,8 +808,17 @@ local function AddESP(player)
 			return
 		end
 
-		local Health = math.max(0, math.floor(Humanoid.Health + 0.5))
-		local MaxHealth = math.max(0, math.floor(Humanoid.MaxHealth + 0.5))
+		local Health =
+			math.max(
+				0,
+				math.floor(Humanoid.Health + 0.5)
+			)
+
+		local MaxHealth =
+			math.max(
+				0,
+				math.floor(Humanoid.MaxHealth + 0.5)
+			)
 
 		InfoLabel.Text =
 			player.DisplayName
@@ -764,9 +866,11 @@ ESPRefreshConnection = Connect(
 		end
 
 		if not ESPRefreshConnection.LastRefresh
-			or os.clock() - ESPRefreshConnection.LastRefresh >= 1 then
+			or os.clock()
+			- ESPRefreshConnection.LastRefresh >= 1 then
 
-			ESPRefreshConnection.LastRefresh = os.clock()
+			ESPRefreshConnection.LastRefresh =
+				os.clock()
 
 			UpdateESP()
 
@@ -842,6 +946,117 @@ Connect(
 )
 
 --==================================================
+-- MELEE AURA
+--==================================================
+
+local function StopMeleeAura()
+	if MeleeConnection then
+		MeleeConnection:Disconnect()
+		MeleeConnection = nil
+	end
+end
+
+local function StartMeleeAura()
+	StopMeleeAura()
+
+	MeleeConnection =
+		RunService.Heartbeat:Connect(
+			function()
+				if Terminated or not MeleeAura then
+					return
+				end
+
+				local Character =
+					LocalPlayer.Character
+
+				if not Character then
+					return
+				end
+
+				local RootPart =
+					Character:FindFirstChild(
+						"HumanoidRootPart"
+					)
+
+				if not RootPart then
+					return
+				end
+
+				local Params = OverlapParams.new()
+
+				Params.FilterType =
+					Enum.RaycastFilterType.Exclude
+
+				Params.FilterDescendantsInstances = {
+					Character
+				}
+
+				local Parts =
+					workspace:GetPartBoundsInRadius(
+						RootPart.Position,
+						MeleeRange,
+						Params
+					)
+
+				local Targets = {}
+
+				for _, Part in ipairs(Parts) do
+					local Model =
+						Part:FindFirstAncestorOfClass(
+							"Model"
+						)
+
+					if Model and not Targets[Model] then
+						local Humanoid =
+							Model:FindFirstChildOfClass(
+								"Humanoid"
+							)
+
+						if Humanoid
+							and Humanoid.Health > 0 then
+
+							Targets[Model] = Humanoid
+						end
+					end
+				end
+
+				-- Targets contains every nearby
+				-- damageable model.
+				--
+				-- This detection does NOT directly
+				-- apply damage. Your weapon's normal
+				-- server-side damage system should
+				-- handle the actual hit.
+			end
+		)
+end
+
+local function SetMeleeAura(enabled)
+	MeleeAura = enabled
+
+	MeleeAuraButton.Text =
+		"Melee Aura: "
+		.. (MeleeAura and "ON" or "OFF")
+
+	if MeleeAura then
+		StartMeleeAura()
+	else
+		StopMeleeAura()
+	end
+end
+
+Connect(
+	MeleeAuraButton.MouseButton1Click,
+	function()
+		if Terminated then
+			return
+		end
+
+		SetMeleeAura(not MeleeAura)
+	end
+)
+
+--==================================================
 -- CHARACTER ADDED
 --==================================================
 
@@ -859,42 +1074,23 @@ Connect(
 		end
 
 		if WalkSpeedEnabled then
-			local Character = LocalPlayer.Character
+			local Character =
+				LocalPlayer.Character
 
 			local Humanoid =
 				Character
-				and Character:FindFirstChildOfClass("Humanoid")
+				and Character:FindFirstChildOfClass(
+					"Humanoid"
+				)
 
 			if Humanoid then
-				Humanoid.WalkSpeed = WalkSpeedValue
+				Humanoid.WalkSpeed =
+					WalkSpeedValue
 			end
 		end
 	end
 )
 
---==================================================
--- MELEE AURA
---==================================================
-
-local MeleeAuraButton = CreateSwitch(
-	ToolsFrame,
-	"MeleeAuraButton",
-	"Melee Aura",
-	UDim2.new(0, 15, 0, 185)
-)
-
-local MeleeRangeSlider = CreateSlider(
-	ToolsFrame,
-	"MeleeRangeSlider",
-	"Melee Range",
-	UDim2.new(0, 285, 0, 180),
-	0,
-	1000,
-	15,
-	function(Value)
-		MeleeRange = Value
-	end
-)
 --==================================================
 -- LOCK
 --==================================================
@@ -907,7 +1103,9 @@ Connect(
 		end
 
 		Locked = not Locked
-		LockButton.Text = Locked and "🔒" or "🔓"
+
+		LockButton.Text =
+			Locked and "🔒" or "🔓"
 	end
 )
 
@@ -923,6 +1121,7 @@ local function TerminateDashboard()
 	Terminated = true
 
 	DisconnectFlyJump()
+	StopMeleeAura()
 
 	for player, Data in pairs(ESPObjects) do
 		if Data.Highlight then
@@ -965,7 +1164,8 @@ Connect(
 			return
 		end
 
-		Dashboard.Visible = not Dashboard.Visible
+		Dashboard.Visible =
+			not Dashboard.Visible
 	end
 )
 
@@ -980,8 +1180,10 @@ Connect(
 			return
 		end
 
-		if input.UserInputType == Enum.UserInputType.MouseButton1
-			or input.UserInputType == Enum.UserInputType.Touch then
+		if input.UserInputType ==
+				Enum.UserInputType.MouseButton1
+			or input.UserInputType ==
+				Enum.UserInputType.Touch then
 
 			DraggingY = true
 			DragStartY = input.Position
@@ -990,7 +1192,9 @@ Connect(
 			Connect(
 				input.Changed,
 				function()
-					if input.UserInputState == Enum.UserInputState.End then
+					if input.UserInputState ==
+						Enum.UserInputState.End then
+
 						DraggingY = false
 					end
 				end
@@ -1006,24 +1210,29 @@ Connect(
 			return
 		end
 
-		if input.UserInputType == Enum.UserInputType.MouseMovement
-			or input.UserInputType == Enum.UserInputType.Touch then
+		if input.UserInputType ==
+				Enum.UserInputType.MouseMovement
+			or input.UserInputType ==
+				Enum.UserInputType.Touch then
 
-			local Delta = input.Position - DragStartY
+			local Delta =
+				input.Position - DragStartY
 
-			YButton.Position = UDim2.new(
-				StartPosY.X.Scale,
-				StartPosY.X.Offset + Delta.X,
-				StartPosY.Y.Scale,
-				StartPosY.Y.Offset + Delta.Y
-			)
+			YButton.Position =
+				UDim2.new(
+					StartPosY.X.Scale,
+					StartPosY.X.Offset + Delta.X,
+					StartPosY.Y.Scale,
+					StartPosY.Y.Offset + Delta.Y
+				)
 
-			LockButton.Position = UDim2.new(
-				YButton.Position.X.Scale,
-				YButton.Position.X.Offset + 60,
-				YButton.Position.Y.Scale,
-				YButton.Position.Y.Offset + 11
-			)
+			LockButton.Position =
+				UDim2.new(
+					YButton.Position.X.Scale,
+					YButton.Position.X.Offset + 60,
+					YButton.Position.Y.Scale,
+					YButton.Position.Y.Offset + 11
+				)
 		end
 	end
 )
@@ -1039,17 +1248,22 @@ Connect(
 			return
 		end
 
-		if input.UserInputType == Enum.UserInputType.MouseButton1
-			or input.UserInputType == Enum.UserInputType.Touch then
+		if input.UserInputType ==
+				Enum.UserInputType.MouseButton1
+			or input.UserInputType ==
+				Enum.UserInputType.Touch then
 
 			DraggingDashboard = true
 			DragStartDashboard = input.Position
-			StartDashboardPosition = Dashboard.Position
+			StartDashboardPosition =
+				Dashboard.Position
 
 			Connect(
 				input.Changed,
 				function()
-					if input.UserInputState == Enum.UserInputState.End then
+					if input.UserInputState ==
+						Enum.UserInputState.End then
+
 						DraggingDashboard = false
 					end
 				end
@@ -1065,18 +1279,24 @@ Connect(
 			return
 		end
 
-		if input.UserInputType == Enum.UserInputType.MouseMovement
-			or input.UserInputType == Enum.UserInputType.Touch then
+		if input.UserInputType ==
+				Enum.UserInputType.MouseMovement
+			or input.UserInputType ==
+				Enum.UserInputType.Touch then
 
-			local Delta = input.Position - DragStartDashboard
+			local Delta =
+				input.Position - DragStartDashboard
 
-			Dashboard.Position = UDim2.new(
-				StartDashboardPosition.X.Scale,
-				StartDashboardPosition.X.Offset + Delta.X,
-				StartDashboardPosition.Y.Scale,
-				StartDashboardPosition.Y.Offset + Delta.Y
-			)
+			Dashboard.Position =
+				UDim2.new(
+					StartDashboardPosition.X.Scale,
+					StartDashboardPosition.X.Offset
+						+ Delta.X,
+
+					StartDashboardPosition.Y.Scale,
+					StartDashboardPosition.Y.Offset
+						+ Delta.Y
+				)
 		end
 	end
 )
-
