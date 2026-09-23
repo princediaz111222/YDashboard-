@@ -124,10 +124,64 @@ Title.Font = Enum.Font.GothamBold
 Title.Parent = Dashboard
 
 --==================================================
+-- TAB BUTTONS
+--==================================================
+
+local ExecuteTab = Instance.new("TextButton")
+ExecuteTab.Name = "ExecuteTab"
+ExecuteTab.Size = UDim2.new(0, 270, 0, 35)
+ExecuteTab.Position = UDim2.new(0, 20, 0, 55)
+ExecuteTab.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+ExecuteTab.Text = "EXECUTE"
+ExecuteTab.TextColor3 = Color3.fromRGB(255, 255, 255)
+ExecuteTab.TextSize = 14
+ExecuteTab.Font = Enum.Font.GothamBold
+ExecuteTab.Parent = Dashboard
+
+local ExecuteTabCorner = Instance.new("UICorner")
+ExecuteTabCorner.CornerRadius = UDim.new(0, 8)
+ExecuteTabCorner.Parent = ExecuteTab
+
+local ToolsTab = Instance.new("TextButton")
+ToolsTab.Name = "ToolsTab"
+ToolsTab.Size = UDim2.new(0, 270, 0, 35)
+ToolsTab.Position = UDim2.new(0, 310, 0, 55)
+ToolsTab.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+ToolsTab.Text = "TOOLS"
+ToolsTab.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToolsTab.TextSize = 14
+ToolsTab.Font = Enum.Font.GothamBold
+ToolsTab.Parent = Dashboard
+
+local ToolsTabCorner = Instance.new("UICorner")
+ToolsTabCorner.CornerRadius = UDim.new(0, 8)
+ToolsTabCorner.Parent = ToolsTab
+
+--==================================================
+-- TAB FRAMES
+--==================================================
+
+local ExecuteFrame = Instance.new("Frame")
+ExecuteFrame.Name = "ExecuteFrame"
+ExecuteFrame.Size = UDim2.new(1, -40, 0, 300)
+ExecuteFrame.Position = UDim2.new(0, 20, 0, 100)
+ExecuteFrame.BackgroundTransparency = 1
+ExecuteFrame.Visible = true
+ExecuteFrame.Parent = Dashboard
+
+local ToolsFrame = Instance.new("Frame")
+ToolsFrame.Name = "ToolsFrame"
+ToolsFrame.Size = UDim2.new(1, -40, 0, 300)
+ToolsFrame.Position = UDim2.new(0, 20, 0, 100)
+ToolsFrame.BackgroundTransparency = 1
+ToolsFrame.Visible = false
+ToolsFrame.Parent = Dashboard
+
+--==================================================
 -- BUTTON FACTORIES
 --==================================================
 
-local function CreateButton(name, text, position)
+local function CreateButton(parent, name, text, position)
 	local Button = Instance.new("TextButton")
 	Button.Name = name
 	Button.Size = UDim2.new(0, 250, 0, 42)
@@ -137,7 +191,7 @@ local function CreateButton(name, text, position)
 	Button.TextSize = 14
 	Button.Font = Enum.Font.GothamBold
 	Button.Text = text
-	Button.Parent = Dashboard
+	Button.Parent = parent
 
 	local Corner = Instance.new("UICorner")
 	Corner.CornerRadius = UDim.new(0, 8)
@@ -146,8 +200,9 @@ local function CreateButton(name, text, position)
 	return Button
 end
 
-local function CreateSwitch(name, text, position)
+local function CreateSwitch(parent, name, text, position)
 	return CreateButton(
+		parent,
 		name,
 		text .. ": OFF",
 		position
@@ -155,23 +210,28 @@ local function CreateSwitch(name, text, position)
 end
 
 --==================================================
--- EXECUTE
+-- EXECUTE BUTTONS
 --==================================================
 
 local ExecuteButton = CreateButton(
+	ExecuteFrame,
 	"ExecuteButton",
 	"Execute SAEV3",
-	UDim2.new(0, 20, 0, 70)
+	UDim2.new(0, 15, 0, 20)
 )
+
 local ExecuteButton2 = CreateButton(
+	ExecuteFrame,
 	"ExecuteButton2",
 	"Execute SAEV4",
-	UDim2.new(0, 290, 0, 70)
+	UDim2.new(0, 285, 0, 20)
 )
+
 local ExecuteButton3 = CreateButton(
+	ExecuteFrame,
 	"ExecuteButton3",
 	"Execute bloxfruit",
-	UDim2.new(0, 560, 0, 70)
+	UDim2.new(0, 15, 0, 75)
 )
 
 --==================================================
@@ -179,9 +239,10 @@ local ExecuteButton3 = CreateButton(
 --==================================================
 
 local InstantInteractButton = CreateSwitch(
+	ToolsFrame,
 	"InstantInteractButton",
 	"Instant Interaction",
-	UDim2.new(0, 20, 0, 120)
+	UDim2.new(0, 15, 0, 20)
 )
 
 --==================================================
@@ -189,9 +250,10 @@ local InstantInteractButton = CreateSwitch(
 --==================================================
 
 local ResetButton = CreateButton(
+	ToolsFrame,
 	"ResetButton",
 	"Reset Character",
-	UDim2.new(0, 290, 0, 120)
+	UDim2.new(0, 285, 0, 20)
 )
 
 --==================================================
@@ -199,15 +261,16 @@ local ResetButton = CreateButton(
 --==================================================
 
 local WalkSpeedButton = CreateSwitch(
+	ToolsFrame,
 	"WalkSpeedButton",
 	"WalkSpeed",
-	UDim2.new(0, 20, 0, 170)
+	UDim2.new(0, 15, 0, 75)
 )
 
 local WalkSpeedBox = Instance.new("TextBox")
 WalkSpeedBox.Name = "WalkSpeedBox"
 WalkSpeedBox.Size = UDim2.new(0, 250, 0, 42)
-WalkSpeedBox.Position = UDim2.new(0, 290, 0, 170)
+WalkSpeedBox.Position = UDim2.new(0, 285, 0, 75)
 WalkSpeedBox.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 WalkSpeedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 WalkSpeedBox.PlaceholderColor3 = Color3.fromRGB(170, 170, 170)
@@ -216,7 +279,7 @@ WalkSpeedBox.Font = Enum.Font.GothamBold
 WalkSpeedBox.PlaceholderText = "WalkSpeed"
 WalkSpeedBox.Text = "16"
 WalkSpeedBox.ClearTextOnFocus = false
-WalkSpeedBox.Parent = Dashboard
+WalkSpeedBox.Parent = ToolsFrame
 
 local WalkSpeedCorner = Instance.new("UICorner")
 WalkSpeedCorner.CornerRadius = UDim.new(0, 8)
@@ -227,9 +290,10 @@ WalkSpeedCorner.Parent = WalkSpeedBox
 --==================================================
 
 local FlyJumpButton = CreateSwitch(
+	ToolsFrame,
 	"FlyJumpButton",
 	"FlyJump",
-	UDim2.new(0, 20, 0, 220)
+	UDim2.new(0, 15, 0, 130)
 )
 
 --==================================================
@@ -237,9 +301,10 @@ local FlyJumpButton = CreateSwitch(
 --==================================================
 
 local PlayerESPButton = CreateSwitch(
+	ToolsFrame,
 	"PlayerESPButton",
 	"Player ESP",
-	UDim2.new(0, 290, 0, 220)
+	UDim2.new(0, 285, 0, 130)
 )
 
 --==================================================
@@ -247,6 +312,7 @@ local PlayerESPButton = CreateSwitch(
 --==================================================
 
 local TerminateButton = CreateButton(
+	Dashboard,
 	"TerminateButton",
 	"TERMINATE Y DASHBOARD",
 	UDim2.new(0.5, -125, 1, -55)
@@ -255,29 +321,53 @@ local TerminateButton = CreateButton(
 TerminateButton.BackgroundColor3 = Color3.fromRGB(120, 35, 35)
 
 --==================================================
+-- TAB SWITCHING
+--==================================================
+
+Connect(
+	ExecuteTab.MouseButton1Click,
+	function()
+		ExecuteFrame.Visible = true
+		ToolsFrame.Visible = false
+
+		ExecuteTab.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+		ToolsTab.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+	end
+)
+
+Connect(
+	ToolsTab.MouseButton1Click,
+	function()
+		ExecuteFrame.Visible = false
+		ToolsFrame.Visible = true
+
+		ExecuteTab.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+		ToolsTab.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+	end
+)
+
+--==================================================
 -- EXECUTE
 --==================================================
 
 Connect(
 	ExecuteButton.MouseButton1Click,
 	function()
-	loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/73260ee6e0b3892aa700a13e1fd7d3c9.lua"))()
-
+		loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/73260ee6e0b3892aa700a13e1fd7d3c9.lua"))()
 	end
 )
+
 Connect(
 	ExecuteButton2.MouseButton1Click,
 	function()
-	loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/4595fe31a5f7a8b4f4dd7071f3119ef7.lua"))()
-	
+		loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/4595fe31a5f7a8b4f4dd7071f3119ef7.lua"))()
 	end
 )
 
 Connect(
 	ExecuteButton3.MouseButton1Click,
 	function()
-	loadstring(game:HttpGet("https://raw.githubusercontent.com/Dev-GravityHub/BloxFruit/main/MainV3.lua"))()
-	
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/Dev-GravityHub/BloxFruit/main/MainV3.lua"))()
 	end
 )
 
@@ -382,8 +472,6 @@ local function SetupFlyJump()
 		return
 	end
 
-	-- JumpRequest fires when the normal Roblox jump button
-	-- is pressed/held, including mobile.
 	FlyJumpConnection = UserInputService.JumpRequest:Connect(
 		function()
 			if Terminated or not FlyJumpEnabled then
@@ -406,7 +494,6 @@ local function SetupFlyJump()
 				return
 			end
 
-			-- Keep the character airborne while Jump is requested.
 			Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
 
 			local CurrentVelocity =
@@ -482,10 +569,6 @@ local function AddESP(player)
 
 	RemoveESP(player)
 
-	--==================================================
-	-- HIGHLIGHT
-	--==================================================
-
 	local Highlight = Instance.new("Highlight")
 	Highlight.Name = "YPlayerESP"
 	Highlight.FillTransparency = 0.5
@@ -493,19 +576,11 @@ local function AddESP(player)
 	Highlight.Adornee = Character
 	Highlight.Parent = Character
 
-	--==================================================
-	-- NAME + HP BILLBOARD
-	--==================================================
-
 	local Billboard = Instance.new("BillboardGui")
 	Billboard.Name = "YPlayerInfo"
 	Billboard.Adornee = Head
 	Billboard.Size = UDim2.new(0, 200, 0, 45)
-
-	-- Offset above the player's head.
 	Billboard.StudsOffset = Vector3.new(0, 3, 0)
-
-	-- Prevents the billboard from scaling with distance.
 	Billboard.SizeOffset = Vector2.new(0, 0)
 	Billboard.AlwaysOnTop = true
 	Billboard.MaxDistance = math.huge
@@ -577,7 +652,6 @@ ESPRefreshConnection = Connect(
 			return
 		end
 
-		-- Refresh every 1 second.
 		if not ESPRefreshConnection.LastRefresh
 			or os.clock() - ESPRefreshConnection.LastRefresh >= 1 then
 
