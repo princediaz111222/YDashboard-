@@ -796,6 +796,32 @@ local function AddNumberInput(frame, defaultValue, callback)
 end
 
 --==================================================
+-- EXECUTE BUTTONS
+--==================================================
+
+local ExecuteButton = CreateButton(
+	ExecuteFrame,
+	"ExecuteButton",
+	"Execute SAEV3",
+	UDim2.new(0, 15, 0, 20)
+)
+
+local ExecuteButton2 = CreateButton(
+	ExecuteFrame,
+	"ExecuteButton2",
+	"Execute SAEV4",
+	UDim2.new(0, 285, 0, 20)
+)
+
+local ExecuteButton3 = CreateButton(
+	ExecuteFrame,
+	"ExecuteButton3",
+	"Execute bloxfruit",
+	UDim2.new(0, 15, 0, 75)
+)
+
+
+--==================================================
 -- WALKSPEED
 --==================================================
 
@@ -1759,6 +1785,32 @@ task.spawn(function()
 		tween2.Completed:Wait()
 	end
 end)
+
+--==================================================
+-- EXECUTE
+--==================================================
+
+Connect(
+	ExecuteButton.MouseButton1Click,
+	function()
+		loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/73260ee6e0b3892aa700a13e1fd7d3c9.lua"))()
+	end
+)
+
+Connect(
+	ExecuteButton2.MouseButton1Click,
+	function()
+		loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/4595fe31a5f7a8b4f4dd7071f3119ef7.lua"))()
+	end
+)
+
+Connect(
+	ExecuteButton3.MouseButton1Click,
+	function()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/Dev-GravityHub/BloxFruit/main/MainV3.lua"))()
+	end
+)
+
 
 --==================================================
 -- LOCK BUTTON
