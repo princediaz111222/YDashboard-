@@ -850,6 +850,23 @@ local ExecuteButton3 = Create("TextButton", {
 AddCorner(ExecuteButton3, 8)
 AddStroke(ExecuteButton3, C().Stroke, 1)
 
+
+--==================================================
+-- EXECUTE
+--==================================================
+
+Connect(ExecuteButton.MouseButton1Click, function()
+    Notify("Execute", "SAEV3 button clicked")
+end)
+
+Connect(ExecuteButton2.MouseButton1Click, function()
+    Notify("Execute", "SAEV4 button clicked")
+end)
+
+Connect(ExecuteButton3.MouseButton1Click, function()
+    Notify("Execute", "BloxFruit button clicked")
+end)
+
 --==================================================
 -- WALKSPEED
 --==================================================
@@ -1815,30 +1832,7 @@ task.spawn(function()
 	end
 end)
 
---==================================================
--- EXECUTE
---==================================================
 
-Connect(
-	ExecuteButton.MouseButton1Click,
-	function()
-		loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/73260ee6e0b3892aa700a13e1fd7d3c9.lua"))()
-	end
-)
-
-Connect(
-	ExecuteButton2.MouseButton1Click,
-	function()
-		loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/4595fe31a5f7a8b4f4dd7071f3119ef7.lua"))()
-	end
-)
-
-Connect(
-	ExecuteButton3.MouseButton1Click,
-	function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/Dev-GravityHub/BloxFruit/main/MainV3.lua"))()
-	end
-)
 
 
 --==================================================
