@@ -962,7 +962,7 @@ end)
 
 Connect (ExecuteButton3.MouseButton1Click, function()
 	Notify("Execute", "BloxFruit button clicked")
-loadstring(game:HttpGet("https://raw.githubusercontent.com/Dev-GravityHub/BloxFruit/main/MainV3.lua"))(
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Dev-GravityHub/BloxFruit/main/MainV3.lua"))()
 			
 end)
 
