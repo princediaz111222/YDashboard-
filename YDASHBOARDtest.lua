@@ -145,10 +145,19 @@ local Z = {
 -- HELPERS
 --==================================================
 
+local ThemeObjects = {}
+
 local function Connect(signal, callback)
 	local connection = signal:Connect(callback)
 	table.insert(Connections, connection)
 	return connection
+end
+
+local function RegisterThemeObject(object, properties)
+	table.insert(ThemeObjects, {
+		Object = object,
+		Properties = properties
+	})
 end
 
 local function Create(className, properties)
@@ -157,6 +166,8 @@ local function Create(className, properties)
 	for property, value in pairs(properties) do
 		object[property] = value
 	end
+
+	RegisterThemeObject(object, properties)
 
 	return object
 end
@@ -174,6 +185,90 @@ local function AddStroke(object, color, thickness)
 	stroke.Thickness = thickness or 1
 	stroke.Parent = object
 	return stroke
+end
+
+--==================================================
+-- APPLY THEME
+--==================================================
+
+local function ApplyTheme()
+	for _, data in ipairs(ThemeObjects) do
+		local object = data.Object
+		local properties = data.Properties
+
+		if object and object.Parent then
+			for property, value in pairs(properties) do
+
+				if property == "BackgroundColor3" then
+
+					if value == Themes.Dark.Background
+						or value == Themes.Light.Background then
+
+						object.BackgroundColor3 = C().Background
+
+					elseif value == Themes.Dark.Panel
+						or value == Themes.Light.Panel then
+
+						object.BackgroundColor3 = C().Panel
+
+					elseif value == Themes.Dark.Panel2
+						or value == Themes.Light.Panel2 then
+
+						object.BackgroundColor3 = C().Panel2
+
+					elseif value == Themes.Dark.Panel3
+						or value == Themes.Light.Panel3 then
+
+						object.BackgroundColor3 = C().Panel3
+
+					elseif value == Themes.Dark.Enabled
+						or value == Themes.Light.Enabled then
+
+						object.BackgroundColor3 = C().Enabled
+
+					elseif value == Themes.Dark.Disabled
+						or value == Themes.Light.Disabled then
+
+						object.BackgroundColor3 = C().Disabled
+
+					elseif value == Themes.Dark.Accent
+						or value == Themes.Light.Accent then
+
+						object.BackgroundColor3 = C().Accent
+					end
+
+				elseif property == "TextColor3" then
+
+					if value == Themes.Dark.Text
+						or value == Themes.Light.Text then
+
+						object.TextColor3 = C().Text
+
+					elseif value == Themes.Dark.SubText
+						or value == Themes.Light.SubText then
+
+						object.TextColor3 = C().SubText
+					end
+
+				elseif property == "PlaceholderColor3" then
+
+					if value == Themes.Dark.SubText
+						or value == Themes.Light.SubText then
+
+						object.PlaceholderColor3 = C().SubText
+					end
+
+				elseif property == "ScrollBarImageColor3" then
+
+					if value == Themes.Dark.Accent
+						or value == Themes.Light.Accent then
+
+						object.ScrollBarImageColor3 = C().Accent
+					end
+				end
+			end
+		end
+	end
 end
 
 --==================================================
@@ -850,27 +945,25 @@ local ExecuteButton3 = Create("TextButton", {
 AddCorner(ExecuteButton3, 8)
 AddStroke(ExecuteButton3, C().Stroke, 1)
 
-
 --==================================================
 -- EXECUTE
 --==================================================
 
-Connect(ExecuteButton.MouseButton1Click, function()
-    Notify("Execute", "SAEV3 button clicked")
-		loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/73260ee6e0b3892aa700a13e1fd7d3c9.lua"))()
-		
+Connect (ExecuteButton.MouseButton1Click, function()
+	Notify("Execute", "SAEV3 button clicked")
+loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/73260ee6e0b3892aa700a13e1fd7d3c9.lua"))()
 end)
 
-Connect(ExecuteButton2.MouseButton1Click, function()
-    Notify("Execute", "SAEV4 button clicked")
-		loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/4595fe31a5f7a8b4f4dd7071f3119ef7.lua"))()
-		
+Connect (ExecuteButton2.MouseButton1Click, function()
+	Notify("Execute", "SAEV4 button clicked")
+https://api.luarmor.net/files/v4/loaders/4595fe31a5f7a8b4f4dd7071f3119ef7.lua
 end)
 
-Connect(ExecuteButton3.MouseButton1Click, function()
-    Notify("Execute", "BloxFruit button clicked")
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/Dev-GravityHub/BloxFruit/main/MainV3.lua"))()
-		
+
+Connect (ExecuteButton3.MouseButton1Click, function()
+	Notify("Execute", "BloxFruit button clicked")
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Dev-GravityHub/BloxFruit/main/MainV3.lua"))(
+			
 end)
 
 --==================================================
@@ -1294,7 +1387,6 @@ end
 Connect(WaypointSaveButton.MouseButton1Click, function()
 	local name = WaypointNameBox.Text
 
-	-- Require a name
 	if not name or name:match("^%s*$") then
 		Notify(
 			"Waypoint",
@@ -1315,7 +1407,6 @@ Connect(WaypointSaveButton.MouseButton1Click, function()
 		return
 	end
 
-	-- Prevent accidental duplicate names
 	if Waypoints[name] then
 		Notify(
 			"Waypoint",
@@ -1397,6 +1488,8 @@ do
 		else
 			CurrentTheme = "Dark"
 		end
+
+		ApplyTheme()
 
 		button.Text = CurrentTheme
 
@@ -1504,7 +1597,6 @@ AddCorner(TerminateButton, 7)
 Connect(TerminateButton.MouseButton1Click, function()
 	Terminated = true
 
-	-- Restore modified values
 	workspace.Gravity = OriginalGravity
 
 	local character = Player.Character
@@ -1518,7 +1610,6 @@ Connect(TerminateButton.MouseButton1Click, function()
 
 	RemoveESP()
 
-	-- Disconnect everything
 	for _, connection in ipairs(Connections) do
 		pcall(function()
 			connection:Disconnect()
@@ -1527,8 +1618,6 @@ Connect(TerminateButton.MouseButton1Click, function()
 
 	table.clear(Connections)
 
-	-- Remove the complete dashboard,
-	-- including Y and Lock.
 	pcall(function()
 		ScreenGui:Destroy()
 	end)
@@ -1598,7 +1687,6 @@ for category, button in pairs(CategoryButtons) do
 				or C().Panel2
 		end
 
-		-- WAYPOINTS CATEGORY ONLY
 		if category == "Waypoints" then
 			CommandScroll.Visible = false
 			WaypointContainer.Visible = true
@@ -1837,9 +1925,6 @@ task.spawn(function()
 		tween2.Completed:Wait()
 	end
 end)
-
-
-
 
 --==================================================
 -- LOCK BUTTON
