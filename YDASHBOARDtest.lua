@@ -800,21 +800,21 @@ end
 --==================================================
 
 local ExecuteButton = CreateButton(
-	ExecuteFrame,
+	ExecutePage,
 	"ExecuteButton",
 	"Execute SAEV3",
 	UDim2.new(0, 15, 0, 20)
 )
 
 local ExecuteButton2 = CreateButton(
-	ExecuteFrame,
+	ExecutePage,
 	"ExecuteButton2",
 	"Execute SAEV4",
 	UDim2.new(0, 285, 0, 20)
 )
 
 local ExecuteButton3 = CreateButton(
-	ExecuteFrame,
+	ExecutePage,
 	"ExecuteButton3",
 	"Execute bloxfruit",
 	UDim2.new(0, 15, 0, 75)
