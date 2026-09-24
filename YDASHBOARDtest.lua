@@ -148,6 +148,10 @@ local Z = {
 local ThemeObjects = {}
 
 local function Connect(signal, callback)
+	if Terminated then
+		return
+	end
+
 	local connection = signal:Connect(callback)
 	table.insert(Connections, connection)
 	return connection
@@ -185,6 +189,20 @@ local function AddStroke(object, color, thickness)
 	stroke.Thickness = thickness or 1
 	stroke.Parent = object
 	return stroke
+end
+
+--==================================================
+-- CHARACTER ROOT
+--==================================================
+
+local function GetRoot()
+	local character = Player.Character
+
+	if not character then
+		return nil
+	end
+
+	return character:FindFirstChild("HumanoidRootPart")
 end
 
 --==================================================
@@ -324,7 +342,7 @@ local Dashboard = Create("Frame", {
 
 AddCorner(Dashboard, 15)
 
-local DashboardStroke = AddStroke(
+AddStroke(
 	Dashboard,
 	C().Stroke,
 	1
@@ -343,7 +361,7 @@ local Glow = Create("Frame", {
 	Active = false
 })
 
-local GlowGradient = Create("UIGradient", {
+Create("UIGradient", {
 	Parent = Glow,
 	Color = ColorSequence.new({
 		ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 110, 255)),
@@ -352,7 +370,7 @@ local GlowGradient = Create("UIGradient", {
 	})
 })
 
-local GlowStroke = Create("UIStroke", {
+Create("UIStroke", {
 	Parent = Dashboard,
 	Thickness = 1,
 	Transparency = 0.3,
@@ -373,7 +391,7 @@ local Header = Create("Frame", {
 
 AddCorner(Header, 15)
 
-local HeaderCover = Create("Frame", {
+Create("Frame", {
 	Parent = Header,
 	BackgroundColor3 = C().Panel,
 	BorderSizePixel = 0,
@@ -382,7 +400,7 @@ local HeaderCover = Create("Frame", {
 	ZIndex = Z.Dashboard
 })
 
-local Title = Create("TextLabel", {
+Create("TextLabel", {
 	Parent = Header,
 	BackgroundTransparency = 1,
 	Position = UDim2.new(0, 22, 0, 12),
@@ -395,7 +413,7 @@ local Title = Create("TextLabel", {
 	ZIndex = Z.HeaderText
 })
 
-local Subtitle = Create("TextLabel", {
+Create("TextLabel", {
 	Parent = Header,
 	BackgroundTransparency = 1,
 	Position = UDim2.new(0, 24, 0, 42),
@@ -432,15 +450,6 @@ Connect(DashboardDragBar.InputBegan, function(input)
 		DashboardDragging = true
 		DashboardDragStart = input.Position
 		DashboardStartPos = Dashboard.Position
-
-		local connection
-
-		connection = input.Changed:Connect(function()
-			if input.UserInputState == Enum.UserInputState.End then
-				DashboardDragging = false
-				connection:Disconnect()
-			end
-		end)
 	end
 end)
 
@@ -469,6 +478,14 @@ Connect(UIS.InputChanged, function(input)
 		Dashboard.Position.Y.Scale,
 		Dashboard.Position.Y.Offset - 5
 	)
+end)
+
+Connect(UIS.InputEnded, function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1
+		or input.UserInputType == Enum.UserInputType.Touch then
+
+		DashboardDragging = false
+	end
 end)
 
 --==================================================
@@ -532,7 +549,7 @@ local NotificationHolder = Create("Frame", {
 	ZIndex = Z.Notifications
 })
 
-local NotificationLayout = Create("UIListLayout", {
+Create("UIListLayout", {
 	Parent = NotificationHolder,
 	SortOrder = Enum.SortOrder.LayoutOrder,
 	Padding = UDim.new(0, 8)
@@ -647,6 +664,82 @@ Create("TextLabel", {
 	ZIndex = Z.Buttons
 })
 
+local ExecuteButton = Create("TextButton", {
+	Parent = ExecutePage,
+	BackgroundColor3 = C().Panel2,
+	Position = UDim2.new(0, 15, 0, 145),
+	Size = UDim2.new(0, 250, 0, 45),
+	Text = "Execute SAEV3",
+	TextColor3 = C().Text,
+	Font = Enum.Font.GothamBold,
+	TextSize = 11,
+	AutoButtonColor = false,
+	ZIndex = Z.Buttons,
+	Active = true
+})
+
+AddCorner(ExecuteButton, 8)
+AddStroke(ExecuteButton, C().Stroke, 1)
+
+local ExecuteButton2 = Create("TextButton", {
+	Parent = ExecutePage,
+	BackgroundColor3 = C().Panel2,
+	Position = UDim2.new(0, 285, 0, 145),
+	Size = UDim2.new(0, 250, 0, 45),
+	Text = "Execute SAEV4",
+	TextColor3 = C().Text,
+	Font = Enum.Font.GothamBold,
+	TextSize = 11,
+	AutoButtonColor = false,
+	ZIndex = Z.Buttons,
+	Active = true
+})
+
+AddCorner(ExecuteButton2, 8)
+AddStroke(ExecuteButton2, C().Stroke, 1)
+
+local ExecuteButton3 = Create("TextButton", {
+	Parent = ExecutePage,
+	BackgroundColor3 = C().Panel2,
+	Position = UDim2.new(0, 15, 0, 200),
+	Size = UDim2.new(0, 250, 0, 45),
+	Text = "Execute BloxFruit",
+	TextColor3 = C().Text,
+	Font = Enum.Font.GothamBold,
+	TextSize = 11,
+	AutoButtonColor = false,
+	ZIndex = Z.Buttons,
+	Active = true
+})
+
+AddCorner(ExecuteButton3, 8)
+AddStroke(ExecuteButton3, C().Stroke, 1)
+
+--==================================================
+-- EXECUTE PLACEHOLDERS
+--==================================================
+
+Connect(ExecuteButton.MouseButton1Click, function()
+	Notify(
+		"Execute",
+		"SAEV3 module placeholder."
+	)
+end)
+
+Connect(ExecuteButton2.MouseButton1Click, function()
+	Notify(
+		"Execute",
+		"SAEV4 module placeholder."
+	)
+end)
+
+Connect(ExecuteButton3.MouseButton1Click, function()
+	Notify(
+		"Execute",
+		"BloxFruit module placeholder."
+	)
+end)
+
 --==================================================
 -- TOOLS SEARCH
 --==================================================
@@ -691,9 +784,19 @@ local CategoryButtons = {}
 for i, category in ipairs(Categories) do
 	local button = Create("TextButton", {
 		Parent = CategoryHolder,
-		BackgroundColor3 = category == "All" and C().Enabled or C().Panel2,
-		Position = UDim2.new(0, (i - 1) * 105, 0, 0),
+		BackgroundColor3 = category == "All"
+			and C().Enabled
+			or C().Panel2,
+
+		Position = UDim2.new(
+			0,
+			(i - 1) * 105,
+			0,
+			0
+		),
+
 		Size = UDim2.new(0, 95, 0, 32),
+
 		Text = category,
 		TextColor3 = C().Text,
 		Font = Enum.Font.GothamBold,
@@ -724,12 +827,6 @@ local CommandScroll = Create("ScrollingFrame", {
 
 AddCorner(CommandScroll, 10)
 
-Create("UIListLayout", {
-	Parent = CommandScroll,
-	SortOrder = Enum.SortOrder.LayoutOrder,
-	Padding = UDim.new(0, 7)
-})
-
 Create("UIPadding", {
 	Parent = CommandScroll,
 	PaddingTop = UDim.new(0, 8),
@@ -739,10 +836,42 @@ Create("UIPadding", {
 })
 
 --==================================================
--- COMMAND HELPERS
+-- COMMAND MANAGER
 --==================================================
 
 local CommandEntries = {}
+
+local function RefreshCommands()
+	local scroll = CommandScroll
+
+	for _, entry in ipairs(CommandEntries) do
+		if entry.Frame and entry.Frame.Parent then
+			entry.Frame.Visible = true
+
+			local nameMatch =
+				SearchText == ""
+				or string.find(
+					string.lower(entry.Name),
+					SearchText,
+					1,
+					true
+				)
+
+			local categoryMatch =
+				CurrentCategory == "All"
+				or entry.Category == CurrentCategory
+
+			entry.Frame.Visible =
+				nameMatch and categoryMatch
+		end
+	end
+
+	if CurrentCategory == "Waypoints" then
+		scroll.Visible = false
+	else
+		scroll.Visible = true
+	end
+end
 
 local function AddCommand(name, category)
 	local frame = Create("Frame", {
@@ -798,13 +927,23 @@ end
 
 local function AddToggle(frame, default, callback, xOffset)
 	local state = default
+
 	xOffset = xOffset or -95
 
 	local button = Create("TextButton", {
 		Parent = frame,
-		BackgroundColor3 = state and C().Enabled or C().Disabled,
-		Position = UDim2.new(1, xOffset, 0.5, -16),
+		BackgroundColor3 =
+			state and C().Enabled or C().Disabled,
+
+		Position = UDim2.new(
+			1,
+			xOffset,
+			0.5,
+			-16
+		),
+
 		Size = UDim2.new(0, 85, 0, 32),
+
 		Text = state and "ON" or "OFF",
 		TextColor3 = C().Text,
 		Font = Enum.Font.GothamBold,
@@ -819,8 +958,11 @@ local function AddToggle(frame, default, callback, xOffset)
 	Connect(button.MouseButton1Click, function()
 		state = not state
 
-		button.Text = state and "ON" or "OFF"
-		button.BackgroundColor3 = state and C().Enabled or C().Disabled
+		button.Text =
+			state and "ON" or "OFF"
+
+		button.BackgroundColor3 =
+			state and C().Enabled or C().Disabled
 
 		callback(state)
 	end)
@@ -872,7 +1014,10 @@ local function AddNumberInput(frame, defaultValue, callback)
 		local value = tonumber(box.Text)
 
 		if value == nil then
-			Notify("Input", "Please enter a valid number.")
+			Notify(
+				"Input",
+				"Please enter a valid number."
+			)
 			return
 		end
 
@@ -891,116 +1036,79 @@ local function AddNumberInput(frame, defaultValue, callback)
 end
 
 --==================================================
--- EXECUTE BUTTONS
---==================================================
-
-local ExecuteButton = Create("TextButton", {
-	Parent = ExecutePage,
-	BackgroundColor3 = C().Panel2,
-	Position = UDim2.new(0, 15, 0, 145),
-	Size = UDim2.new(0, 250, 0, 45),
-	Text = "Execute SAEV3",
-	TextColor3 = C().Text,
-	Font = Enum.Font.GothamBold,
-	TextSize = 11,
-	AutoButtonColor = false,
-	ZIndex = Z.Buttons,
-	Active = true
-})
-
-AddCorner(ExecuteButton, 8)
-AddStroke(ExecuteButton, C().Stroke, 1)
-
-local ExecuteButton2 = Create("TextButton", {
-	Parent = ExecutePage,
-	BackgroundColor3 = C().Panel2,
-	Position = UDim2.new(0, 285, 0, 145),
-	Size = UDim2.new(0, 250, 0, 45),
-	Text = "Execute SAEV4",
-	TextColor3 = C().Text,
-	Font = Enum.Font.GothamBold,
-	TextSize = 11,
-	AutoButtonColor = false,
-	ZIndex = Z.Buttons,
-	Active = true
-})
-
-AddCorner(ExecuteButton2, 8)
-AddStroke(ExecuteButton2, C().Stroke, 1)
-
-local ExecuteButton3 = Create("TextButton", {
-	Parent = ExecutePage,
-	BackgroundColor3 = C().Panel2,
-	Position = UDim2.new(0, 15, 0, 200),
-	Size = UDim2.new(0, 250, 0, 45),
-	Text = "Execute BloxFruit",
-	TextColor3 = C().Text,
-	Font = Enum.Font.GothamBold,
-	TextSize = 11,
-	AutoButtonColor = false,
-	ZIndex = Z.Buttons,
-	Active = true
-})
-
-AddCorner(ExecuteButton3, 8)
-AddStroke(ExecuteButton3, C().Stroke, 1)
-
---==================================================
--- EXECUTE
---==================================================
-
-Connect (ExecuteButton.MouseButton1Click, function()
-	Notify("Execute", "SAEV3 button clicked")
-loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/73260ee6e0b3892aa700a13e1fd7d3c9.lua"))()
-end)
-
-Connect (ExecuteButton2.MouseButton1Click, function()
-	Notify("Execute", "SAEV4 button clicked")
-loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/4595fe31a5f7a8b4f4dd7071f3119ef7.lua"))()
-end)
-
-
-Connect (ExecuteButton3.MouseButton1Click, function()
-	Notify("Execute", "BloxFruit button clicked")
-loadstring(game:HttpGet("https://raw.githubusercontent.com/Dev-GravityHub/BloxFruit/main/MainV3.lua"))()
-			
-end)
-
---==================================================
 -- WALKSPEED
 --==================================================
 
 do
-	local frame = AddCommand("WalkSpeed", "Movement")
-
-	AddToggle(frame, false, function(state)
-		WalkSpeedEnabled = state
-
-		local character = Player.Character
-		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-
-		if humanoid then
-			humanoid.WalkSpeed = state and WalkSpeedValue or 16
-		end
-
-		Notify(
+	local frame =
+		AddCommand(
 			"WalkSpeed",
-			state and ("Enabled: " .. tostring(WalkSpeedValue)) or "Disabled"
+			"Movement"
 		)
-	end, -290)
 
-	AddNumberInput(frame, 16, function(value)
-		WalkSpeedValue = value
+	AddToggle(
+		frame,
+		false,
+		function(state)
 
-		local character = Player.Character
-		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+			WalkSpeedEnabled = state
 
-		if WalkSpeedEnabled and humanoid then
-			humanoid.WalkSpeed = value
+			local character =
+				Player.Character
+
+			local humanoid =
+				character
+				and character:FindFirstChildOfClass(
+					"Humanoid"
+				)
+
+			if humanoid then
+				humanoid.WalkSpeed =
+					state
+					and WalkSpeedValue
+					or 16
+			end
+
+			Notify(
+				"WalkSpeed",
+				state
+				and (
+					"Enabled: "
+					.. tostring(WalkSpeedValue)
+				)
+				or "Disabled"
+			)
+		end,
+		-290
+	)
+
+	AddNumberInput(
+		frame,
+		16,
+		function(value)
+
+			WalkSpeedValue = value
+
+			local character =
+				Player.Character
+
+			local humanoid =
+				character
+				and character:FindFirstChildOfClass(
+					"Humanoid"
+				)
+
+			if WalkSpeedEnabled and humanoid then
+				humanoid.WalkSpeed = value
+			end
+
+			Notify(
+				"WalkSpeed",
+				"Applied: "
+				.. tostring(value)
+			)
 		end
-
-		Notify("WalkSpeed", "Applied: " .. tostring(value))
-	end)
+	)
 end
 
 --==================================================
@@ -1008,38 +1116,78 @@ end
 --==================================================
 
 do
-	local frame = AddCommand("JumpPower", "Movement")
-
-	AddToggle(frame, false, function(state)
-		JumpPowerEnabled = state
-
-		local character = Player.Character
-		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-
-		if humanoid then
-			humanoid.UseJumpPower = true
-			humanoid.JumpPower = state and JumpPowerValue or 50
-		end
-
-		Notify(
+	local frame =
+		AddCommand(
 			"JumpPower",
-			state and ("Enabled: " .. tostring(JumpPowerValue)) or "Disabled"
+			"Movement"
 		)
-	end, -290)
 
-	AddNumberInput(frame, 50, function(value)
-		JumpPowerValue = value
+	AddToggle(
+		frame,
+		false,
+		function(state)
 
-		local character = Player.Character
-		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+			JumpPowerEnabled = state
 
-		if JumpPowerEnabled and humanoid then
-			humanoid.UseJumpPower = true
-			humanoid.JumpPower = value
+			local character =
+				Player.Character
+
+			local humanoid =
+				character
+				and character:FindFirstChildOfClass(
+					"Humanoid"
+				)
+
+			if humanoid then
+				humanoid.UseJumpPower = true
+
+				humanoid.JumpPower =
+					state
+					and JumpPowerValue
+					or 50
+			end
+
+			Notify(
+				"JumpPower",
+				state
+				and (
+					"Enabled: "
+					.. tostring(JumpPowerValue)
+				)
+				or "Disabled"
+			)
+		end,
+		-290
+	)
+
+	AddNumberInput(
+		frame,
+		50,
+		function(value)
+
+			JumpPowerValue = value
+
+			local character =
+				Player.Character
+
+			local humanoid =
+				character
+				and character:FindFirstChildOfClass(
+					"Humanoid"
+				)
+
+			if JumpPowerEnabled and humanoid then
+				humanoid.UseJumpPower = true
+				humanoid.JumpPower = value
+			end
+
+			Notify(
+				"JumpPower",
+				"Applied: "
+				.. tostring(value)
+			)
 		end
-
-		Notify("JumpPower", "Applied: " .. tostring(value))
-	end)
+	)
 end
 
 --==================================================
@@ -1047,29 +1195,59 @@ end
 --==================================================
 
 do
-	local frame = AddCommand("Gravity", "Movement")
+	local frame =
+		AddCommand(
+			"Gravity",
+			"Movement"
+		)
 
-	AddToggle(frame, false, function(state)
-		GravityEnabled = state
+	AddToggle(
+		frame,
+		false,
+		function(state)
 
-		if state then
-			workspace.Gravity = GravityValue
-			Notify("Gravity", "Enabled: " .. tostring(GravityValue))
-		else
-			workspace.Gravity = OriginalGravity
-			Notify("Gravity", "Restored")
+			GravityEnabled = state
+
+			if state then
+				workspace.Gravity =
+					GravityValue
+
+				Notify(
+					"Gravity",
+					"Enabled: "
+					.. tostring(GravityValue)
+				)
+			else
+				workspace.Gravity =
+					OriginalGravity
+
+				Notify(
+					"Gravity",
+					"Restored"
+				)
+			end
+		end,
+		-290
+	)
+
+	AddNumberInput(
+		frame,
+		GravityValue,
+		function(value)
+
+			GravityValue = value
+
+			if GravityEnabled then
+				workspace.Gravity = value
+			end
+
+			Notify(
+				"Gravity",
+				"Applied: "
+				.. tostring(value)
+			)
 		end
-	end, -290)
-
-	AddNumberInput(frame, GravityValue, function(value)
-		GravityValue = value
-
-		if GravityEnabled then
-			workspace.Gravity = value
-		end
-
-		Notify("Gravity", "Applied: " .. tostring(value))
-	end)
+	)
 end
 
 --==================================================
@@ -1077,13 +1255,27 @@ end
 --==================================================
 
 do
-	local frame = AddCommand("Noclip", "Movement")
+	local frame =
+		AddCommand(
+			"Noclip",
+			"Movement"
+		)
 
-	AddToggle(frame, false, function(state)
-		NoclipEnabled = state
+	AddToggle(
+		frame,
+		false,
+		function(state)
 
-		Notify("Noclip", state and "Enabled" or "Disabled")
-	end)
+			NoclipEnabled = state
+
+			Notify(
+				"Noclip",
+				state
+				and "Enabled"
+				or "Disabled"
+			)
+		end
+	)
 end
 
 --==================================================
@@ -1091,13 +1283,27 @@ end
 --==================================================
 
 do
-	local frame = AddCommand("Fly Jump", "Movement")
+	local frame =
+		AddCommand(
+			"Fly Jump",
+			"Movement"
+		)
 
-	AddToggle(frame, false, function(state)
-		FlyJumpEnabled = state
+	AddToggle(
+		frame,
+		false,
+		function(state)
 
-		Notify("Fly Jump", state and "Enabled" or "Disabled")
-	end)
+			FlyJumpEnabled = state
+
+			Notify(
+				"Fly Jump",
+				state
+				and "Enabled"
+				or "Disabled"
+			)
+		end
+	)
 end
 
 --==================================================
@@ -1106,6 +1312,7 @@ end
 
 local function RemoveESP()
 	for player, objects in pairs(ESPObjects) do
+
 		for _, object in pairs(objects) do
 			pcall(function()
 				object:Destroy()
@@ -1117,24 +1324,38 @@ local function RemoveESP()
 end
 
 local function CreateESP(player)
-	if player == Player or not ESPEnabled then
+	if player == Player
+		or not ESPEnabled then
 		return
 	end
 
-	local character = player.Character
+	local character =
+		player.Character
 
 	if not character then
 		return
 	end
 
-	local highlight = Instance.new("Highlight")
+	local highlight =
+		Instance.new("Highlight")
 
-	highlight.Name = "YDashboardESP"
-	highlight.FillTransparency = 0.75
-	highlight.OutlineTransparency = 0
-	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-	highlight.Adornee = character
-	highlight.Parent = character
+	highlight.Name =
+		"YDashboardESP"
+
+	highlight.FillTransparency =
+		0.75
+
+	highlight.OutlineTransparency =
+		0
+
+	highlight.DepthMode =
+		Enum.HighlightDepthMode.AlwaysOnTop
+
+	highlight.Adornee =
+		character
+
+	highlight.Parent =
+		character
 
 	ESPObjects[player] = {
 		highlight
@@ -1148,20 +1369,38 @@ local function RefreshESP()
 		return
 	end
 
-	for _, player in ipairs(Players:GetPlayers()) do
+	for _, player in ipairs(
+		Players:GetPlayers()
+	) do
+
 		CreateESP(player)
 	end
 end
 
 do
-	local frame = AddCommand("Player ESP", "Visual")
+	local frame =
+		AddCommand(
+			"Player ESP",
+			"Visual"
+		)
 
-	AddToggle(frame, false, function(state)
-		ESPEnabled = state
-		RefreshESP()
+	AddToggle(
+		frame,
+		false,
+		function(state)
 
-		Notify("Player ESP", state and "Enabled" or "Disabled")
-	end)
+			ESPEnabled = state
+
+			RefreshESP()
+
+			Notify(
+				"Player ESP",
+				state
+				and "Enabled"
+				or "Disabled"
+			)
+		end
+	)
 end
 
 --==================================================
@@ -1169,16 +1408,28 @@ end
 --==================================================
 
 do
-	local frame = AddCommand("Instant Interaction", "Utility")
-
-	AddToggle(frame, false, function(state)
-		InstantInteractionEnabled = state
-
-		Notify(
+	local frame =
+		AddCommand(
 			"Instant Interaction",
-			state and "Enabled" or "Disabled"
+			"Utility"
 		)
-	end)
+
+	AddToggle(
+		frame,
+		false,
+		function(state)
+
+			InstantInteractionEnabled =
+				state
+
+			Notify(
+				"Instant Interaction",
+				state
+				and "Enabled"
+				or "Disabled"
+			)
+		end
+	)
 end
 
 --==================================================
@@ -1186,7 +1437,11 @@ end
 --==================================================
 
 do
-	local frame = AddCommand("Reset Character", "Utility")
+	local frame =
+		AddCommand(
+			"Reset Character",
+			"Utility"
+		)
 
 	local button = Create("TextButton", {
 		Parent = frame,
@@ -1205,14 +1460,24 @@ do
 	AddCorner(button, 7)
 
 	Connect(button.MouseButton1Click, function()
-		local character = Player.Character
-		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+
+		local character =
+			Player.Character
+
+		local humanoid =
+			character
+			and character:FindFirstChildOfClass(
+				"Humanoid"
+			)
 
 		if humanoid then
 			humanoid.Health = 0
 		end
 
-		Notify("Reset Character", "Character reset.")
+		Notify(
+			"Reset Character",
+			"Character reset."
+		)
 	end)
 end
 
@@ -1221,7 +1486,11 @@ end
 --==================================================
 
 do
-	local frame = AddCommand("Server Info", "Server")
+	local frame =
+		AddCommand(
+			"Server Info",
+			"Server"
+		)
 
 	local button = Create("TextButton", {
 		Parent = frame,
@@ -1240,12 +1509,13 @@ do
 	AddCorner(button, 7)
 
 	Connect(button.MouseButton1Click, function()
+
 		Notify(
 			"Server Info",
 			"Players: "
-				.. tostring(#Players:GetPlayers())
-				.. " | JobId: "
-				.. string.sub(game.JobId, 1, 8)
+			.. tostring(#Players:GetPlayers())
+			.. " | JobId: "
+			.. string.sub(game.JobId, 1, 8)
 		)
 	end)
 end
@@ -1262,10 +1532,6 @@ local WaypointContainer = Create("Frame", {
 	Visible = false,
 	ZIndex = Z.Content
 })
-
---==================================================
--- WAYPOINT NAME INPUT
---==================================================
 
 local WaypointNameBox = Create("TextBox", {
 	Parent = WaypointContainer,
@@ -1302,10 +1568,6 @@ local WaypointSaveButton = Create("TextButton", {
 
 AddCorner(WaypointSaveButton, 8)
 
---==================================================
--- WAYPOINT LIST
---==================================================
-
 local WaypointList = Create("ScrollingFrame", {
 	Parent = WaypointContainer,
 	BackgroundColor3 = C().Panel,
@@ -1322,7 +1584,7 @@ local WaypointList = Create("ScrollingFrame", {
 
 AddCorner(WaypointList, 10)
 
-local WaypointLayout = Create("UIListLayout", {
+Create("UIListLayout", {
 	Parent = WaypointList,
 	SortOrder = Enum.SortOrder.LayoutOrder,
 	Padding = UDim.new(0, 6)
@@ -1337,10 +1599,11 @@ Create("UIPadding", {
 })
 
 --==================================================
--- WAYPOINT CREATION
+-- WAYPOINT BUTTON
 --==================================================
 
 local function CreateWaypointButton(name)
+
 	local button = Create("TextButton", {
 		Parent = WaypointList,
 		BackgroundColor3 = C().Panel2,
@@ -1359,21 +1622,31 @@ local function CreateWaypointButton(name)
 	AddStroke(button, C().Stroke, 1)
 
 	Connect(button.MouseButton1Click, function()
-		local waypoint = Waypoints[name]
+
+		local waypoint =
+			Waypoints[name]
 
 		if not waypoint then
-			Notify("Waypoint", "Waypoint no longer exists.")
+			Notify(
+				"Waypoint",
+				"Waypoint no longer exists."
+			)
 			return
 		end
 
-		local root = GetRoot()
+		local root =
+			GetRoot()
 
 		if not root then
-			Notify("Waypoint", "Character not found.")
+			Notify(
+				"Waypoint",
+				"Character not found."
+			)
 			return
 		end
 
-		root.CFrame = waypoint
+		root.CFrame =
+			waypoint
 
 		Notify(
 			"Waypoint",
@@ -1384,54 +1657,68 @@ local function CreateWaypointButton(name)
 	return button
 end
 
-Connect(WaypointSaveButton.MouseButton1Click, function()
-	local name = WaypointNameBox.Text
+Connect(
+	WaypointSaveButton.MouseButton1Click,
+	function()
 
-	if not name or name:match("^%s*$") then
+		local name =
+			WaypointNameBox.Text
+
+		if not name
+			or name:match("^%s*$") then
+
+			Notify(
+				"Waypoint",
+				"Enter a waypoint name first."
+			)
+
+			return
+		end
+
+		name =
+			name:match("^%s*(.-)%s*$")
+
+		local root =
+			GetRoot()
+
+		if not root then
+			Notify(
+				"Waypoint",
+				"Character not found."
+			)
+
+			return
+		end
+
+		if Waypoints[name] then
+			Notify(
+				"Waypoint",
+				"A waypoint with that name already exists."
+			)
+
+			return
+		end
+
+		Waypoints[name] =
+			root.CFrame
+
+		CreateWaypointButton(name)
+
+		WaypointNameBox.Text = ""
+
 		Notify(
 			"Waypoint",
-			"Enter a waypoint name first."
+			"Saved: " .. name
 		)
-		return
 	end
-
-	name = name:match("^%s*(.-)%s*$")
-
-	local root = GetRoot()
-
-	if not root then
-		Notify(
-			"Waypoint",
-			"Character not found."
-		)
-		return
-	end
-
-	if Waypoints[name] then
-		Notify(
-			"Waypoint",
-			"A waypoint with that name already exists."
-		)
-		return
-	end
-
-	Waypoints[name] = root.CFrame
-
-	CreateWaypointButton(name)
-
-	WaypointNameBox.Text = ""
-
-	Notify(
-		"Waypoint",
-		"Saved: " .. name
-	)
-end)
+)
 
 --==================================================
 -- SETTINGS
 --==================================================
 
 local function CreateSettingRow(name, y)
+
 	local row = Create("Frame", {
 		Parent = SettingsPage,
 		BackgroundColor3 = C().Panel2,
@@ -1464,7 +1751,11 @@ end
 --==================================================
 
 do
-	local row = CreateSettingRow("Theme", 0)
+	local row =
+		CreateSettingRow(
+			"Theme",
+			0
+		)
 
 	local button = Create("TextButton", {
 		Parent = row,
@@ -1483,6 +1774,7 @@ do
 	AddCorner(button, 7)
 
 	Connect(button.MouseButton1Click, function()
+
 		if CurrentTheme == "Dark" then
 			CurrentTheme = "Light"
 		else
@@ -1491,11 +1783,13 @@ do
 
 		ApplyTheme()
 
-		button.Text = CurrentTheme
+		button.Text =
+			CurrentTheme
 
 		Notify(
 			"Theme",
-			"Theme changed to " .. CurrentTheme
+			"Theme changed to "
+			.. CurrentTheme
 		)
 	end)
 end
@@ -1505,18 +1799,34 @@ end
 --==================================================
 
 do
-	local row = CreateSettingRow("GUI Scale", 70)
-
-	AddNumberInput(row, 1, function(value)
-		value = math.clamp(value, 0.5, 1)
-
-		UIScale.Scale = value
-
-		Notify(
+	local row =
+		CreateSettingRow(
 			"GUI Scale",
-			"Scale applied: " .. tostring(value)
+			70
 		)
-	end)
+
+	AddNumberInput(
+		row,
+		1,
+		function(value)
+
+			value =
+				math.clamp(
+					value,
+					0.5,
+					1
+				)
+
+			UIScale.Scale =
+				value
+
+			Notify(
+				"GUI Scale",
+				"Scale applied: "
+				.. tostring(value)
+			)
+		end
+	)
 end
 
 --==================================================
@@ -1524,7 +1834,11 @@ end
 --==================================================
 
 do
-	local row = CreateSettingRow("Keybind", 140)
+	local row =
+		CreateSettingRow(
+			"Keybind",
+			140
+		)
 
 	local button = Create("TextButton", {
 		Parent = row,
@@ -1545,6 +1859,7 @@ do
 	local waitingForKey = false
 
 	Connect(button.MouseButton1Click, function()
+
 		waitingForKey = true
 		button.Text = "PRESS KEY"
 
@@ -1555,18 +1870,27 @@ do
 	end)
 
 	Connect(UIS.InputBegan, function(input, processed)
-		if processed or not waitingForKey then
+
+		if processed
+			or not waitingForKey then
 			return
 		end
 
-		if input.UserInputType == Enum.UserInputType.Keyboard then
-			Keybind = input.KeyCode
-			button.Text = Keybind.Name
+		if input.UserInputType ==
+			Enum.UserInputType.Keyboard then
+
+			Keybind =
+				input.KeyCode
+
+			button.Text =
+				Keybind.Name
+
 			waitingForKey = false
 
 			Notify(
 				"Keybind",
-				"Set to " .. Keybind.Name
+				"Set to "
+				.. Keybind.Name
 			)
 		end
 	end)
@@ -1576,7 +1900,11 @@ end
 -- TERMINATE
 --==================================================
 
-local TerminateRow = CreateSettingRow("Terminate", 210)
+local TerminateRow =
+	CreateSettingRow(
+		"Terminate",
+		210
+	)
 
 local TerminateButton = Create("TextButton", {
 	Parent = TerminateRow,
@@ -1594,40 +1922,52 @@ local TerminateButton = Create("TextButton", {
 
 AddCorner(TerminateButton, 7)
 
-Connect(TerminateButton.MouseButton1Click, function()
-	Terminated = true
+Connect(
+	TerminateButton.MouseButton1Click,
+	function()
 
-	workspace.Gravity = OriginalGravity
+		Terminated = true
 
-	local character = Player.Character
-	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		workspace.Gravity =
+			OriginalGravity
 
-	if humanoid then
-		humanoid.WalkSpeed = 16
-		humanoid.UseJumpPower = true
-		humanoid.JumpPower = 50
-	end
+		local character =
+			Player.Character
 
-	RemoveESP()
+		local humanoid =
+			character
+			and character:FindFirstChildOfClass(
+				"Humanoid"
+			)
 
-	for _, connection in ipairs(Connections) do
+		if humanoid then
+			humanoid.WalkSpeed = 16
+			humanoid.UseJumpPower = true
+			humanoid.JumpPower = 50
+		end
+
+		RemoveESP()
+
+		for _, connection in ipairs(Connections) do
+			pcall(function()
+				connection:Disconnect()
+			end)
+		end
+
+		table.clear(Connections)
+
 		pcall(function()
-			connection:Disconnect()
+			ScreenGui:Destroy()
 		end)
 	end
-
-	table.clear(Connections)
-
-	pcall(function()
-		ScreenGui:Destroy()
-	end)
-end)
+)
 
 --==================================================
 -- PAGE SWITCHING
 --==================================================
 
 local function ShowPage(page)
+
 	ExecutePage.Visible = false
 	ToolsPage.Visible = false
 	SettingsPage.Visible = false
@@ -1635,217 +1975,290 @@ local function ShowPage(page)
 	page.Visible = true
 end
 
-Connect(ExecuteTab.MouseButton1Click, function()
-	ShowPage(ExecutePage)
-end)
+Connect(
+	ExecuteTab.MouseButton1Click,
+	function()
+		ShowPage(ExecutePage)
+	end
+)
 
-Connect(ToolsTab.MouseButton1Click, function()
-	ShowPage(ToolsPage)
-end)
+Connect(
+	ToolsTab.MouseButton1Click,
+	function()
+		ShowPage(ToolsPage)
+	end
+)
 
-Connect(SettingsTab.MouseButton1Click, function()
-	ShowPage(SettingsPage)
-end)
+Connect(
+	SettingsTab.MouseButton1Click,
+	function()
+		ShowPage(SettingsPage)
+	end
+)
 
 --==================================================
 -- SEARCH
 --==================================================
 
-Connect(SearchBox:GetPropertyChangedSignal("Text"), function()
-	SearchText = string.lower(SearchBox.Text)
+Connect(
+	SearchBox:GetPropertyChangedSignal("Text"),
+	function()
 
-	for _, entry in ipairs(CommandEntries) do
-		local nameMatch =
-			SearchText == ""
-			or string.find(
-				string.lower(entry.Name),
-				SearchText,
-				1,
-				true
+		SearchText =
+			string.lower(
+				SearchBox.Text
 			)
 
-		local categoryMatch =
-			CurrentCategory == "All"
-			or entry.Category == CurrentCategory
-
-		entry.Frame.Visible = nameMatch and categoryMatch
+		RefreshCommands()
 	end
-end)
+)
 
 --==================================================
 -- CATEGORY FILTER
 --==================================================
 
 for category, button in pairs(CategoryButtons) do
-	Connect(button.MouseButton1Click, function()
-		CurrentCategory = category
 
-		for name, otherButton in pairs(CategoryButtons) do
-			otherButton.BackgroundColor3 =
-				name == category
-				and C().Enabled
-				or C().Panel2
-		end
+	Connect(
+		button.MouseButton1Click,
+		function()
 
-		if category == "Waypoints" then
-			CommandScroll.Visible = false
-			WaypointContainer.Visible = true
-		else
-			CommandScroll.Visible = true
-			WaypointContainer.Visible = false
-		end
+			CurrentCategory =
+				category
 
-		for _, entry in ipairs(CommandEntries) do
-			local nameMatch =
-				SearchText == ""
-				or string.find(
-					string.lower(entry.Name),
-					SearchText,
-					1,
+			for name, otherButton in pairs(
+				CategoryButtons
+			) do
+
+				otherButton.BackgroundColor3 =
+					name == category
+					and C().Enabled
+					or C().Panel2
+			end
+
+			if category == "Waypoints" then
+
+				CommandScroll.Visible =
+					false
+
+				WaypointContainer.Visible =
 					true
-				)
 
-			local categoryMatch =
-				category == "All"
-				or entry.Category == category
+			else
 
-			entry.Frame.Visible = nameMatch and categoryMatch
+				CommandScroll.Visible =
+					true
+
+				WaypointContainer.Visible =
+					false
+
+			end
+
+			RefreshCommands()
 		end
-	end)
+	)
 end
 
 --==================================================
 -- NOCLIP
 --==================================================
 
-Connect(RunService.Stepped, function()
-	if Terminated then
-		return
-	end
+Connect(
+	RunService.Stepped,
+	function()
 
-	if not NoclipEnabled then
-		return
-	end
+		if Terminated
+			or not NoclipEnabled then
+			return
+		end
 
-	local character = Player.Character
+		local character =
+			Player.Character
 
-	if not character then
-		return
-	end
+		if not character then
+			return
+		end
 
-	for _, object in ipairs(character:GetDescendants()) do
-		if object:IsA("BasePart") then
-			object.CanCollide = false
+		for _, object in ipairs(
+			character:GetDescendants()
+		) do
+
+			if object:IsA("BasePart") then
+				object.CanCollide = false
+			end
 		end
 	end
-end)
+)
 
 --==================================================
 -- WALKSPEED / JUMPPOWER
 --==================================================
 
-Connect(RunService.Heartbeat, function()
-	if Terminated then
-		return
-	end
+Connect(
+	RunService.Heartbeat,
+	function()
 
-	local character = Player.Character
+		if Terminated then
+			return
+		end
 
-	if not character then
-		return
-	end
+		local character =
+			Player.Character
 
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if not character then
+			return
+		end
 
-	if not humanoid then
-		return
-	end
+		local humanoid =
+			character:FindFirstChildOfClass(
+				"Humanoid"
+			)
 
-	if WalkSpeedEnabled then
-		if humanoid.WalkSpeed ~= WalkSpeedValue then
-			humanoid.WalkSpeed = WalkSpeedValue
+		if not humanoid then
+			return
+		end
+
+		if WalkSpeedEnabled then
+
+			if humanoid.WalkSpeed
+				~= WalkSpeedValue then
+
+				humanoid.WalkSpeed =
+					WalkSpeedValue
+			end
+		end
+
+		if JumpPowerEnabled then
+
+			humanoid.UseJumpPower =
+				true
+
+			if humanoid.JumpPower
+				~= JumpPowerValue then
+
+				humanoid.JumpPower =
+					JumpPowerValue
+			end
 		end
 	end
-
-	if JumpPowerEnabled then
-		humanoid.UseJumpPower = true
-
-		if humanoid.JumpPower ~= JumpPowerValue then
-			humanoid.JumpPower = JumpPowerValue
-		end
-	end
-end)
+)
 
 --==================================================
 -- FLY JUMP
 --==================================================
 
-Connect(UIS.JumpRequest, function()
-	if not FlyJumpEnabled then
-		return
-	end
+Connect(
+	UIS.JumpRequest,
+	function()
 
-	local character = Player.Character
-	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		if not FlyJumpEnabled then
+			return
+		end
 
-	if humanoid then
-		humanoid:ChangeState(
-			Enum.HumanoidStateType.Jumping
-		)
+		local character =
+			Player.Character
+
+		local humanoid =
+			character
+			and character:FindFirstChildOfClass(
+				"Humanoid"
+			)
+
+		if humanoid then
+
+			humanoid:ChangeState(
+				Enum.HumanoidStateType.Jumping
+			)
+		end
 	end
-end)
+)
 
 --==================================================
 -- INSTANT INTERACTION
 --==================================================
 
-Connect(ProximityPromptService.PromptButtonHoldBegan, function(prompt)
-	if not InstantInteractionEnabled then
-		return
+Connect(
+	ProximityPromptService.PromptButtonHoldBegan,
+	function(prompt)
+
+		if not InstantInteractionEnabled then
+			return
+		end
+
+		prompt.HoldDuration = 0
 	end
+)
 
-	prompt.HoldDuration = 0
-end)
+Connect(
+	ProximityPromptService.PromptShown,
+	function(prompt)
 
-Connect(ProximityPromptService.PromptShown, function(prompt)
-	if not InstantInteractionEnabled then
-		return
+		if not InstantInteractionEnabled then
+			return
+		end
+
+		prompt.HoldDuration = 0
 	end
-
-	prompt.HoldDuration = 0
-end)
+)
 
 --==================================================
 -- PLAYER EVENTS
 --==================================================
 
-Connect(Players.PlayerAdded, function(player)
-	if ESPEnabled then
-		task.wait(1)
-		CreateESP(player)
-	end
-end)
+Connect(
+	Players.PlayerAdded,
+	function(player)
 
-Connect(Player.CharacterAdded, function(character)
-	task.wait(0.5)
+		if ESPEnabled then
 
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
+			task.wait(1)
 
-	if humanoid then
-		if WalkSpeedEnabled then
-			humanoid.WalkSpeed = WalkSpeedValue
-		end
+			if ESPEnabled
+				and not Terminated then
 
-		if JumpPowerEnabled then
-			humanoid.UseJumpPower = true
-			humanoid.JumpPower = JumpPowerValue
+				CreateESP(player)
+			end
 		end
 	end
+)
 
-	if ESPEnabled then
-		RefreshESP()
+Connect(
+	Player.CharacterAdded,
+	function(character)
+
+		task.wait(0.5)
+
+		if Terminated then
+			return
+		end
+
+		local humanoid =
+			character:FindFirstChildOfClass(
+				"Humanoid"
+			)
+
+		if humanoid then
+
+			if WalkSpeedEnabled then
+				humanoid.WalkSpeed =
+					WalkSpeedValue
+			end
+
+			if JumpPowerEnabled then
+
+				humanoid.UseJumpPower =
+					true
+
+				humanoid.JumpPower =
+					JumpPowerValue
+			end
+		end
+
+		if ESPEnabled then
+			RefreshESP()
+		end
 	end
-end)
+)
 
 --==================================================
 -- Y BUTTON
@@ -1870,9 +2283,20 @@ AddCorner(YButton, 16)
 Create("UIGradient", {
 	Parent = YButton,
 	Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(25, 110, 255)),
-		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(150, 45, 255)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 40, 75))
+		ColorSequenceKeypoint.new(
+			0,
+			Color3.fromRGB(25, 110, 255)
+		),
+
+		ColorSequenceKeypoint.new(
+			0.5,
+			Color3.fromRGB(150, 45, 255)
+		),
+
+		ColorSequenceKeypoint.new(
+			1,
+			Color3.fromRGB(255, 40, 75)
+		)
 	}),
 	Rotation = 45
 })
@@ -1889,37 +2313,43 @@ local YStroke = Create("UIStroke", {
 --==================================================
 
 task.spawn(function()
-	while not Terminated and YButton.Parent do
-		local tween1 = TweenService:Create(
-			YStroke,
-			TweenInfo.new(
-				0.8,
-				Enum.EasingStyle.Sine,
-				Enum.EasingDirection.InOut
-			),
-			{
-				Transparency = 0.65
-			}
-		)
+
+	while not Terminated
+		and YButton.Parent do
+
+		local tween1 =
+			TweenService:Create(
+				YStroke,
+				TweenInfo.new(
+					0.8,
+					Enum.EasingStyle.Sine,
+					Enum.EasingDirection.InOut
+				),
+				{
+					Transparency = 0.65
+				}
+			)
 
 		tween1:Play()
 		tween1.Completed:Wait()
 
-		if Terminated or not YButton.Parent then
+		if Terminated
+			or not YButton.Parent then
 			break
 		end
 
-		local tween2 = TweenService:Create(
-			YStroke,
-			TweenInfo.new(
-				0.8,
-				Enum.EasingStyle.Sine,
-				Enum.EasingDirection.InOut
-			),
-			{
-				Transparency = 0.05
-			}
-		)
+		local tween2 =
+			TweenService:Create(
+				YStroke,
+				TweenInfo.new(
+					0.8,
+					Enum.EasingStyle.Sine,
+					Enum.EasingDirection.InOut
+				),
+				{
+					Transparency = 0.05
+				}
+			)
 
 		tween2:Play()
 		tween2.Completed:Wait()
@@ -1948,43 +2378,64 @@ AddCorner(LockButton, 9)
 AddStroke(LockButton, C().Stroke, 1)
 
 local function UpdateLockPosition()
-	local yPos = YButton.Position
 
-	LockButton.Position = UDim2.new(
-		yPos.X.Scale,
-		yPos.X.Offset + 65,
-		yPos.Y.Scale,
-		yPos.Y.Offset + 12
-	)
+	local yPos =
+		YButton.Position
+
+	LockButton.Position =
+		UDim2.new(
+			yPos.X.Scale,
+			yPos.X.Offset + 65,
+			yPos.Y.Scale,
+			yPos.Y.Offset + 12
+		)
 end
 
-Connect(LockButton.MouseButton1Click, function()
-	YLocked = not YLocked
+Connect(
+	LockButton.MouseButton1Click,
+	function()
 
-	LockButton.Text = YLocked and "🔒" or "🔓"
+		YLocked =
+			not YLocked
 
-	Notify(
-		"Y Button",
-		YLocked and "Position locked." or "Position unlocked."
-	)
-end)
+		LockButton.Text =
+			YLocked
+			and "🔒"
+			or "🔓"
+
+		Notify(
+			"Y Button",
+			YLocked
+			and "Position locked."
+			or "Position unlocked."
+		)
+	end
+)
 
 --==================================================
 -- Y SCREEN BOUNDS
 --==================================================
 
 local function GetScreenBounds()
-	local camera = workspace.CurrentCamera
+
+	local camera =
+		workspace.CurrentCamera
 
 	if not camera then
 		return 0, 0
 	end
 
-	local viewport = camera.ViewportSize
-	local scale = UIScale.Scale
+	local viewport =
+		camera.ViewportSize
 
-	local screenWidth = viewport.X / scale
-	local screenHeight = viewport.Y / scale
+	local scale =
+		UIScale.Scale
+
+	local screenWidth =
+		viewport.X / scale
+
+	local screenHeight =
+		viewport.Y / scale
 
 	local buttonWidth =
 		YButton.AbsoluteSize.X / scale
@@ -1992,21 +2443,25 @@ local function GetScreenBounds()
 	local buttonHeight =
 		YButton.AbsoluteSize.Y / scale
 
-	local maxX = math.max(
-		0,
-		screenWidth - buttonWidth
-	)
+	local maxX =
+		math.max(
+			0,
+			screenWidth - buttonWidth
+		)
 
-	local maxY = math.max(
-		0,
-		screenHeight - buttonHeight
-	)
+	local maxY =
+		math.max(
+			0,
+			screenHeight - buttonHeight
+		)
 
 	return maxX, maxY
 end
 
 local function ClampYPosition(x, y)
-	local maxX, maxY = GetScreenBounds()
+
+	local maxX, maxY =
+		GetScreenBounds()
 
 	return math.clamp(x, 0, maxX),
 		math.clamp(y, 0, maxY)
@@ -2016,154 +2471,240 @@ end
 -- Y DRAG
 --==================================================
 
-Connect(YButton.InputBegan, function(input)
-	if YLocked then
-		return
+Connect(
+	YButton.InputBegan,
+	function(input)
+
+		if YLocked then
+			return
+		end
+
+		if input.UserInputType ==
+				Enum.UserInputType.MouseButton1
+			or input.UserInputType ==
+				Enum.UserInputType.Touch then
+
+			YDragging = true
+			YMoved = false
+			YPressStart = input.Position
+		end
 	end
+)
 
-	if input.UserInputType == Enum.UserInputType.MouseButton1
-		or input.UserInputType == Enum.UserInputType.Touch then
+Connect(
+	UIS.InputChanged,
+	function(input)
 
-		YDragging = true
-		YMoved = false
-		YPressStart = input.Position
+		if not YDragging then
+			return
+		end
 
-		local connection
+		if YLocked then
+			YDragging = false
+			return
+		end
 
-		connection = input.Changed:Connect(function()
-			if input.UserInputState == Enum.UserInputState.End then
-				YDragging = false
+		if input.UserInputType ~=
+				Enum.UserInputType.MouseMovement
+			and input.UserInputType ~=
+				Enum.UserInputType.Touch then
+			return
+		end
 
-				if connection then
-					connection:Disconnect()
-				end
-			end
-		end)
+		local movement =
+			input.Position
+			- YPressStart
+
+		if movement.Magnitude > 4 then
+			YMoved = true
+		end
+
+		local scale =
+			UIScale.Scale
+
+		local pointerX =
+			input.Position.X / scale
+
+		local pointerY =
+			input.Position.Y / scale
+
+		local buttonWidth =
+			YButton.AbsoluteSize.X / scale
+
+		local buttonHeight =
+			YButton.AbsoluteSize.Y / scale
+
+		local newX =
+			pointerX
+			- buttonWidth / 2
+
+		local newY =
+			pointerY
+			- buttonHeight / 2
+
+		newX, newY =
+			ClampYPosition(
+				newX,
+				newY
+			)
+
+		YButton.Position =
+			UDim2.new(
+				0,
+				newX,
+				0,
+				newY
+			)
+
+		UpdateLockPosition()
 	end
-end)
+)
 
-Connect(UIS.InputChanged, function(input)
-	if not YDragging then
-		return
+Connect(
+	UIS.InputEnded,
+	function(input)
+
+		if input.UserInputType ==
+				Enum.UserInputType.MouseButton1
+			or input.UserInputType ==
+				Enum.UserInputType.Touch then
+
+			YDragging = false
+		end
 	end
-
-	if YLocked then
-		YDragging = false
-		return
-	end
-
-	if input.UserInputType ~= Enum.UserInputType.MouseMovement
-		and input.UserInputType ~= Enum.UserInputType.Touch then
-		return
-	end
-
-	local movement = input.Position - YPressStart
-
-	if movement.Magnitude > 4 then
-		YMoved = true
-	end
-
-	local scale = UIScale.Scale
-
-	local pointerX = input.Position.X / scale
-	local pointerY = input.Position.Y / scale
-
-	local buttonWidth =
-		YButton.AbsoluteSize.X / scale
-
-	local buttonHeight =
-		YButton.AbsoluteSize.Y / scale
-
-	local newX =
-		pointerX - buttonWidth / 2
-
-	local newY =
-		pointerY - buttonHeight / 2
-
-	newX, newY =
-		ClampYPosition(newX, newY)
-
-	YButton.Position = UDim2.new(
-		0,
-		newX,
-		0,
-		newY
-	)
-
-	UpdateLockPosition()
-end)
+)
 
 --==================================================
 -- Y CLICK
 --==================================================
 
-Connect(YButton.MouseButton1Click, function()
-	if YMoved then
-		YMoved = false
-		return
+Connect(
+	YButton.MouseButton1Click,
+	function()
+
+		if YMoved then
+			YMoved = false
+			return
+		end
+
+		DashboardOpen =
+			not DashboardOpen
+
+		Dashboard.Visible =
+			DashboardOpen
+
+		Shadow.Visible =
+			DashboardOpen
+
+		TabHolder.Visible =
+			DashboardOpen
+
+		ContentHolder.Visible =
+			DashboardOpen
 	end
-
-	DashboardOpen = not DashboardOpen
-
-	Dashboard.Visible = DashboardOpen
-	Shadow.Visible = DashboardOpen
-	TabHolder.Visible = DashboardOpen
-	ContentHolder.Visible = DashboardOpen
-end)
+)
 
 --==================================================
 -- KEYBIND
 --==================================================
 
-Connect(UIS.InputBegan, function(input, processed)
-	if processed or Terminated then
-		return
+Connect(
+	UIS.InputBegan,
+	function(input, processed)
+
+		if processed
+			or Terminated then
+			return
+		end
+
+		if input.UserInputType ==
+				Enum.UserInputType.Keyboard
+			and input.KeyCode ==
+				Keybind then
+
+			DashboardOpen =
+				not DashboardOpen
+
+			Dashboard.Visible =
+				DashboardOpen
+
+			Shadow.Visible =
+				DashboardOpen
+
+			TabHolder.Visible =
+				DashboardOpen
+
+			ContentHolder.Visible =
+				DashboardOpen
+		end
 	end
-
-	if input.UserInputType == Enum.UserInputType.Keyboard
-		and input.KeyCode == Keybind then
-
-		DashboardOpen = not DashboardOpen
-
-		Dashboard.Visible = DashboardOpen
-		Shadow.Visible = DashboardOpen
-		TabHolder.Visible = DashboardOpen
-		ContentHolder.Visible = DashboardOpen
-	end
-end)
+)
 
 --==================================================
 -- CAMERA RESIZE
 --==================================================
 
-Connect(workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"), function()
-	if not YLocked then
-		local x = YButton.Position.X.Offset
-		local y = YButton.Position.Y.Offset
+local function SetupCameraResize()
 
-		x, y = ClampYPosition(x, y)
+	local camera =
+		workspace.CurrentCamera
 
-		YButton.Position = UDim2.new(
-			0,
-			x,
-			0,
-			y
-		)
-
-		UpdateLockPosition()
+	if not camera then
+		return
 	end
-end)
+
+	Connect(
+		camera:GetPropertyChangedSignal(
+			"ViewportSize"
+		),
+		function()
+
+			if not YLocked then
+
+				local x =
+					YButton.Position.X.Offset
+
+				local y =
+					YButton.Position.Y.Offset
+
+				x, y =
+					ClampYPosition(
+						x,
+						y
+					)
+
+				YButton.Position =
+					UDim2.new(
+						0,
+						x,
+						0,
+						y
+					)
+
+				UpdateLockPosition()
+			end
+		end
+	)
+end
+
+SetupCameraResize()
 
 --==================================================
 -- INITIAL Y POSITION
 --==================================================
 
 task.defer(function()
-	local camera = workspace.CurrentCamera
+
+	local camera =
+		workspace.CurrentCamera
 
 	if camera then
-		local viewport = camera.ViewportSize
-		local scale = UIScale.Scale
+
+		local viewport =
+			camera.ViewportSize
+
+		local scale =
+			UIScale.Scale
 
 		local buttonWidth =
 			YButton.AbsoluteSize.X / scale
@@ -2175,25 +2716,37 @@ task.defer(function()
 		local y = 30
 
 		x, y =
-			ClampYPosition(x, y)
+			ClampYPosition(
+				x,
+				y
+			)
 
-		YButton.Position = UDim2.new(
-			0,
-			x,
-			0,
-			y
-		)
+		YButton.Position =
+			UDim2.new(
+				0,
+				x,
+				0,
+				y
+			)
 
 		UpdateLockPosition()
 	end
 end)
 
 --==================================================
+-- INITIAL COMMAND REFRESH
+--==================================================
+
+RefreshCommands()
+
+--==================================================
 -- INITIAL NOTIFICATION
 --==================================================
 
 task.delay(0.5, function()
+
 	if not Terminated then
+
 		Notify(
 			"YDashboard",
 			"Dashboard initialized."
@@ -2205,8 +2758,12 @@ end)
 -- SAFETY
 --==================================================
 
-Connect(ScreenGui.AncestryChanged, function()
-	if not ScreenGui.Parent then
-		Terminated = true
+Connect(
+	ScreenGui.AncestryChanged,
+	function()
+
+		if not ScreenGui.Parent then
+			Terminated = true
+		end
 	end
-end)
+)
