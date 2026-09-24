@@ -799,27 +799,56 @@ end
 -- EXECUTE BUTTONS
 --==================================================
 
-local ExecuteButton = CreateButton(
-	ExecutePage,
-	"ExecuteButton",
-	"Execute SAEV3",
-	UDim2.new(0, 15, 0, 20)
-)
+local ExecuteButton = Create("TextButton", {
+	Parent = ExecutePage,
+	BackgroundColor3 = C().Panel2,
+	Position = UDim2.new(0, 15, 0, 145),
+	Size = UDim2.new(0, 250, 0, 45),
+	Text = "Execute SAEV3",
+	TextColor3 = C().Text,
+	Font = Enum.Font.GothamBold,
+	TextSize = 11,
+	AutoButtonColor = false,
+	ZIndex = Z.Buttons,
+	Active = true
+})
 
-local ExecuteButton2 = CreateButton(
-	ExecutePage,
-	"ExecuteButton2",
-	"Execute SAEV4",
-	UDim2.new(0, 285, 0, 20)
-)
+AddCorner(ExecuteButton, 8)
+AddStroke(ExecuteButton, C().Stroke, 1)
 
-local ExecuteButton3 = CreateButton(
-	ExecutePage,
-	"ExecuteButton3",
-	"Execute bloxfruit",
-	UDim2.new(0, 15, 0, 75)
-)
+local ExecuteButton2 = Create("TextButton", {
+	Parent = ExecutePage,
+	BackgroundColor3 = C().Panel2,
+	Position = UDim2.new(0, 285, 0, 145),
+	Size = UDim2.new(0, 250, 0, 45),
+	Text = "Execute SAEV4",
+	TextColor3 = C().Text,
+	Font = Enum.Font.GothamBold,
+	TextSize = 11,
+	AutoButtonColor = false,
+	ZIndex = Z.Buttons,
+	Active = true
+})
 
+AddCorner(ExecuteButton2, 8)
+AddStroke(ExecuteButton2, C().Stroke, 1)
+
+local ExecuteButton3 = Create("TextButton", {
+	Parent = ExecutePage,
+	BackgroundColor3 = C().Panel2,
+	Position = UDim2.new(0, 15, 0, 200),
+	Size = UDim2.new(0, 250, 0, 45),
+	Text = "Execute BloxFruit",
+	TextColor3 = C().Text,
+	Font = Enum.Font.GothamBold,
+	TextSize = 11,
+	AutoButtonColor = false,
+	ZIndex = Z.Buttons,
+	Active = true
+})
+
+AddCorner(ExecuteButton3, 8)
+AddStroke(ExecuteButton3, C().Stroke, 1)
 
 --==================================================
 -- WALKSPEED
