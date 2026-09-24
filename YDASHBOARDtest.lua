@@ -398,6 +398,13 @@ local Subtitle = Create("TextLabel", {
 })
 
 --==================================================
+-- FORWARD DECLARATIONS
+--==================================================
+
+local TabHolder
+local ContentHolder
+
+--==================================================
 -- DASHBOARD DRAG BAR
 --==================================================
 
@@ -413,13 +420,55 @@ local DashboardDragBar = Create("Frame", {
 local DashboardDragging = false
 local DashboardDragStart
 local DashboardStartPosition
-local DashboardTabStartPosition
-local DashboardContentStartPosition
-local DashboardShadowStartPosition
+
+local function UpdateDashboardAttachedUI()
+
+    if Terminated then
+        return
+    end
+
+    local dashboardPosition =
+        Dashboard.Position
+
+    --// Shadow follows Dashboard
+    Shadow.Position = UDim2.new(
+        dashboardPosition.X.Scale,
+        dashboardPosition.X.Offset - 5,
+
+        dashboardPosition.Y.Scale,
+        dashboardPosition.Y.Offset - 5
+    )
+
+    --// Tabs follow Dashboard
+    if TabHolder then
+        TabHolder.Position = UDim2.new(
+            dashboardPosition.X.Scale,
+            dashboardPosition.X.Offset + 15,
+
+            dashboardPosition.Y.Scale,
+            dashboardPosition.Y.Offset + 85
+        )
+    end
+
+    --// Content / Buttons follow Dashboard
+    if ContentHolder then
+        ContentHolder.Position = UDim2.new(
+            dashboardPosition.X.Scale,
+            dashboardPosition.X.Offset + 15,
+
+            dashboardPosition.Y.Scale,
+            dashboardPosition.Y.Offset + 135
+        )
+    end
+end
 
 Connect(
     DashboardDragBar.InputBegan,
     function(input)
+
+        if Terminated then
+            return
+        end
 
         if input.UserInputType ==
             Enum.UserInputType.MouseButton1
@@ -433,15 +482,6 @@ Connect(
 
             DashboardStartPosition =
                 Dashboard.Position
-
-            DashboardTabStartPosition =
-                TabHolder.Position
-
-            DashboardContentStartPosition =
-                ContentHolder.Position
-
-            DashboardShadowStartPosition =
-                Shadow.Position
 
             local connection
 
@@ -465,7 +505,7 @@ Connect(
     UIS.InputChanged,
     function(input)
 
-        if not DashboardDragging then
+        if Terminated or not DashboardDragging then
             return
         end
 
@@ -474,44 +514,26 @@ Connect(
             or input.UserInputType ==
             Enum.UserInputType.Touch then
 
+            if not DashboardDragStart
+                or not DashboardStartPosition then
+                return
+            end
+
             local delta =
                 input.Position - DashboardDragStart
 
-            --// Dashboard
-            Dashboard.Position = UDim2.new(
-                DashboardStartPosition.X.Scale,
-                DashboardStartPosition.X.Offset + delta.X,
+            Dashboard.Position =
+                UDim2.new(
+                    DashboardStartPosition.X.Scale,
+                    DashboardStartPosition.X.Offset
+                        + delta.X,
 
-                DashboardStartPosition.Y.Scale,
-                DashboardStartPosition.Y.Offset + delta.Y
-            )
+                    DashboardStartPosition.Y.Scale,
+                    DashboardStartPosition.Y.Offset
+                        + delta.Y
+                )
 
-            --// Shadow
-            Shadow.Position = UDim2.new(
-                DashboardShadowStartPosition.X.Scale,
-                DashboardShadowStartPosition.X.Offset + delta.X,
-
-                DashboardShadowStartPosition.Y.Scale,
-                DashboardShadowStartPosition.Y.Offset + delta.Y
-            )
-
-            --// Tabs
-            TabHolder.Position = UDim2.new(
-                DashboardTabStartPosition.X.Scale,
-                DashboardTabStartPosition.X.Offset + delta.X,
-
-                DashboardTabStartPosition.Y.Scale,
-                DashboardTabStartPosition.Y.Offset + delta.Y
-            )
-
-            --// Content / Buttons
-            ContentHolder.Position = UDim2.new(
-                DashboardContentStartPosition.X.Scale,
-                DashboardContentStartPosition.X.Offset + delta.X,
-
-                DashboardContentStartPosition.Y.Scale,
-                DashboardContentStartPosition.Y.Offset + delta.Y
-            )
+            UpdateDashboardAttachedUI()
         end
     end
 )
@@ -520,7 +542,7 @@ Connect(
 -- TABS
 --==================================================
 
-local TabHolder = Create("Frame", {
+TabHolder = Create("Frame", {
     Parent = ScaleHolder,
     BackgroundTransparency = 1,
     Position = UDim2.new(0.5, -345, 0.5, -175),
@@ -570,13 +592,17 @@ local SettingsTab = CreateTab(
 -- CONTENT HOLDER
 --==================================================
 
-local ContentHolder = Create("Frame", {
+ContentHolder = Create("Frame", {
     Parent = ScaleHolder,
     BackgroundTransparency = 1,
     Position = UDim2.new(0.5, -345, 0.5, -125),
     Size = UDim2.new(0, 690, 0, 390),
     ZIndex = Z.Content
 })
+
+--// Make sure all external dashboard pieces
+--// start synchronized with the Dashboard.
+UpdateDashboardAttachedUI()
 
 --==================================================
 -- NOTIFICATIONS
