@@ -1485,7 +1485,52 @@ Connect(
         end
     end
 )
+--==================================================
+-- AUTO PROXIMITY PROMPT
+--==================================================
 
+AddCommand(
+    "Auto Proximity Prompt",
+    "Utility",
+    function(frame)
+
+        AddToggle(
+            frame,
+            false,
+            function(enabled)
+
+                AutoProximityPromptEnabled = enabled
+
+                Notify(
+                    "Auto Proximity Prompt",
+                    enabled and "Automatically interacting with nearby prompts."
+                        or "Auto interaction disabled."
+                )
+            end,
+            285
+        )
+    end
+)
+Connect(
+    ProximityPromptService.PromptShown,
+    function(prompt)
+
+        if Terminated
+            or not AutoProximityPromptEnabled then
+            return
+        end
+
+        task.defer(function()
+
+            if prompt
+                and prompt.Parent
+                and prompt.Enabled then
+
+                fireproximityprompt(prompt)
+            end
+        end)
+    end
+)
 --==================================================
 -- RESET CHARACTER
 --==================================================
